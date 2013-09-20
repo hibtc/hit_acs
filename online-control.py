@@ -1,7 +1,13 @@
 """
 Beam-optic control component.
 
-The main component is the class `OnlineControl`.
+The main component is the class `OnlineControl`. This class is responsible
+for managing the interaction between model and online control.
+
+There is also `load_shared_library` to load a runtime library (.dll/.so).
+
+Finally, `OnlineElements` is used for dictionary-like access of online
+element parameters.
 
 """
 import ctypes
@@ -75,7 +81,7 @@ class OnlineElements(collections.MutableMapping):
         """Number of elements."""
         pass
 
-    # Implemented by `MutableMapping`:
+    # `MutableMapping` mixins:
     get          = collections.MutableMapping.get
     __contains__ = collections.MutableMapping.__contains__
     keys         = collections.MutableMapping.keys
@@ -104,9 +110,58 @@ class OnlineControl:
     'BeamOptikDLL.dll'.
 
     """
-    def __init__(self, shared_library, model):
+    _shared_library = None
+
+    def __init__(self, model, shared_library=None):
         """Initialize the online control."""
-        self._shared_library = shared_library
-        # TODO: init library
-        self.elements = OnlineElements(shared_library)
+        self.startup(shared_library)
+
+    def startup(self, library):
+        """Run the library's initialization routines and store the object."""
+        self.uninit()
+        if shared_library:
+            # TODO...
+            self._shared_library = shared_library
+            self.elements = OnlineElements(shared_library)
+
+    @property
+    def mefi(self):
+        """Access to the MEFI parameters."""
+        pass
+
+    @mefi.setter
+    def mefi(self, value):
+        """Access to the MEFI parameters."""
+        pass
+
+    def cleanup():
+        """
+        Run the library's cleanup routines and remove the object.
+
+        Return value is the library object. This can be used to perform
+        further cleanup tasks.
+
+        """
+        if self._shared_library:
+            self._shared_library, lib = None, self._shared_library
+            self.elements = None
+            # TODO...
+            return lib
+        return None
+
+    def changed_elements(self):
+        """
+        Iterate over all elements with inconsistent model/online parameters.
+        """
+        for el in self.elements:
+            # TODO...
+            pass
+
+    def update_model(self):
+        """Update the model to fit the online parameters."""
+        pass
+
+    def update_online(self):
+        """Update all online parameters from the model values."""
+        pass
 
