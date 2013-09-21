@@ -11,6 +11,8 @@ element parameters.
 
 """
 import ctypes
+from ctypes import c_double as Double, c_char_p as Str, c_int as Int, byref
+
 import collections
 
 
@@ -36,6 +38,185 @@ def load_shared_library(shared_library_name = 'BeamOptikDLL'):
         # file not found
         return None
 
+class BeamOptikDLL:
+    """
+    Thin wrapper around the BeamOptikDLL API.
+
+    It abstracts the ctypes data types and automates InterfaceId as well as
+    iDone. Nothing else.
+
+    """
+    def __init__(self, library):
+        self.lib = library
+        self.iid = None
+
+    def __call__(self, function, *params):
+        """
+        Call the specified method.
+
+        The params must neither include iInstance nor iDone.
+        Return iDone.
+
+        """
+        done = Int()
+        params = list(params)
+        #if function != 'DisableMessageBoxes':
+        params.insert(0, params)
+        params.append(byref(done))
+        self.lib[function](*params)
+        if done == 0:
+            return
+        errors = [
+            None,
+            "Invalid Interface ID.",
+            "Parameter not found in internal DVM list.",
+            "GetValue failed.",
+            "SetValue failed.",
+            "Unknown option.",
+            "Memory error.",
+            "General runtime error.",
+            "Ramp event not supported.",
+            "Ramp data not available.",
+            "Invalid offset for ramp function."]
+        if done < len(errors):
+            raise RuntimeError(errors[done])
+        else:
+            raise RuntimeError("Unknown error: %i" % done)
+
+    def GetInterfaceInstance(self):
+        """Call GetInterfaceInstance(). Returns instance_id."""
+        # TODO: doc says both params are integers not pointers to integers
+        self('GetInterfaceInstance')
+        return self.iid.value
+
+    def FreeInterfaceInstance(self):
+        """Call FreeInterfaceInstance()."""
+        # TODO: doc says both params are integers not pointers to integers
+        # TODO: doc says first param (iid) is return value as well
+        self('FreeInterfaceInstance')
+
+    def DisableMessageBoxes(self):
+        """Call DisableMessageBoxes()."""
+        # TODO: doc says, there is no parameter iid
+        # TODO: doc says, done is an integer not a pointer
+        self('DisableMessageBoxes')
+
+    def GetDVMStatus(self):
+        """Call GetDVMStatus(). Returns status."""
+        status = Int()
+        self('GetDVMStatus', byref(status))
+        return status.value
+
+    def SelectVAcc(self, vaccnum):
+        """Call SelectVAcc()."""
+        self('SelectVAcc', byref(Int(vaccnum)))
+
+    def SelectMEFI(self, vaccnum,
+            energy, focus,
+            intensity, gantry_angle,
+            energy_value, focus_value,
+            intensity_value, gantry_angle_value):
+        """Call SelectMEFI()."""
+        # TODO: doc says, done is directly after gantry_angle
+        # TODO: doc does not specify whether the *_value params are output
+        self('SelectMEFI', vaccnum,
+                byref(energy), byref(focus),
+                byref(intensity), byref(gantry_angle),
+                byref(energy_value), byref(focus_value),
+                byref(intensity_value), byref(gantry_angle_value))
+
+    def GetSelectedVAcc(self):
+        """Call GetSelectedVAcc(). Returns vaccnum."""
+        vaccnum = Int()
+        self('GetSelectedVAcc', byref(vaccnum))
+        return vaccnum.value
+
+    def GetFloatValue(self, name):
+        """Call GetFloatValue(). Returns value."""
+        # TODO: doc does not describe what options are possible and
+        # whether options is input or output
+        # TODO: doc says this is double, but function name indicates float
+        options = Int()
+        value = Double()
+        self('GetFloatValue', Str(name), byref(value), byref(options))
+        return value.value
+
+    def SetFloatValue(self, name, value):
+        """Call SetFloatValue()."""
+        # TODO: doc does not describe what options are possible and
+        # whether options is input or output
+        # TODO: doc says this is double, but function name indicates float
+        options = Int()
+        self('SetFloatValue', Str(name), byref(Double(value)), byref(options))
+
+    def ExecuteChanges(self, options):
+        """Call ExecuteChanges()."""
+        self('ExecuteChanges', byref(Int(options)))
+
+    def SetNewValueCallback(self, callback):
+        """Call SetNewValueCallback(). Not implemented!"""
+        # TODO: docs do not specify when this is actually called
+        # TODO: howto create a python callback? Use Cython?
+        raise NotImplementedError
+
+    def GetFloatValueSD(self, name):
+        """Call GetFloatValueSD(). Retuns value."""
+        # TODO: doc does not specify valid values for options
+        # TODO: doc does not specify whether options is input or output
+        # TODO: doc gives no clue about differences to plain GetFloatValue
+        options = Int()
+        value = Double()
+        self('GetFloatValueSD', Str(name), byref(value), byref(options))
+        return value.value
+
+    def GetLastFloatValueSD(self, name):
+        """Call GetLastFloatValueSD(). Retuns value."""
+        # TODO: doc does not specify valid values for options
+        # TODO: doc does not specify whether options is input or output
+        # TODO: doc gives no clue about differences to plain GetFloatValue
+        options = Int()
+        value = Double()
+        self('GetLastFloatValueSD', Str(name), byref(value), byref(options))
+        return value.value
+
+    def StartRampDataGeneration(self, name):
+        """Call StartRampDataGeneration(). Not implemented!"""
+        # TODO: doc cannot be more unclear.
+        raise NotImplementedError
+
+    def GetRampDataValue(self, name):
+        """Call GetRampDataValue(). Not implemented!"""
+        # TODO: doc cannot be more unclear.
+        raise NotImplementedError
+
+    def SetIPC_DVM_ID(self, name):
+        """Call SetIPC_DVM_ID(). Not implemented!"""
+        # TODO: doc cannot be more unclear.
+        raise NotImplementedError
+
+    def GetMEFIValue(self)
+        """Call SelectMEFI(). Returns double(E,F,I,Angle), channel(E,F,I,Angle)."""
+        # TODO: why are channels here after values as opposed to SelectMEFI
+        # TODO: why is here no vaccnum argument
+        # TODO: is all output?
+        energy_value, = Double()
+        focus_value = Dobule()
+        intensity_value = Double()
+        gantry_angle_value = Double()
+        energy_channel = Int()
+        focus_channel = Int()
+        intensity_channel = Int()
+        gantry_angle_channel = Int()
+        self('SelectMEFI',
+                byref(energy_value), byref(focus_value),
+                byref(intensity_value), byref(gantry_angle_value),
+                byref(energy_channel), byref(focus_channel),
+                byref(intensity_channel), byref(gantry_angle_channel))
+        return energy_value.value, focus_value.value,
+                intensity_value.value, gantry_angle_value,.value
+                energy_channel.value, focus_channel.value,
+                intensity_channel.value, gantry_angle_channel.value
+
 
 class OnlineElements(collections.MutableMapping):
     """
@@ -43,7 +224,7 @@ class OnlineElements(collections.MutableMapping):
     """
     def __init__(self, library):
         """Initialize instance."""
-        self._library = library
+        self.lib = library
 
     def __getattr__(self, name):
         """Get the online parameter. Alias for __getitem__."""
@@ -60,7 +241,7 @@ class OnlineElements(collections.MutableMapping):
         TODO
 
         """
-        pass
+        self.lib.GetFloatValue(name)
 
     def __setitem__(self, name, value):
         """
@@ -69,7 +250,7 @@ class OnlineElements(collections.MutableMapping):
         TODO
 
         """
-        pass
+        self.lib.SetFloatValue(name, value)
 
     def __iter__(self):
         """
@@ -110,7 +291,7 @@ class OnlineControl:
     'BeamOptikDLL.dll'.
 
     """
-    _shared_library = None
+    lib = None
 
     def __init__(self, model, shared_library=None):
         """Initialize the online control."""
@@ -121,7 +302,8 @@ class OnlineControl:
         self.uninit()
         if shared_library:
             # TODO...
-            self._shared_library = shared_library
+            self.lib = shared_library
+            self.instance_id = self.lib.GetInterfaceInstance(0, 0)
             self.elements = OnlineElements(shared_library)
 
     @property
@@ -142,8 +324,8 @@ class OnlineControl:
         further cleanup tasks.
 
         """
-        if self._shared_library:
-            self._shared_library, lib = None, self._shared_library
+        if self.lib:
+            self.lib, lib = None, self.lib
             self.elements = None
             # TODO...
             return lib
