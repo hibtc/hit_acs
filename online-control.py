@@ -11,7 +11,7 @@ element parameters.
 
 """
 import ctypes
-from ctypes import c_double as Double, c_char_p as Str, c_int as Int, byref
+from ctypes import c_double as Double, c_char_p as Str, c_int as Int
 
 import collections
 
@@ -54,16 +54,19 @@ class BeamOptikDLL:
         """
         Call the specified method.
 
-        The params must neither include iInstance nor iDone.
-        Return iDone.
+        This is a low-level function that should only be used internally.
+
+        The params must neither include piInstance nor piDone.
+        If an error is returned from the library a RuntimeError will be raised.
 
         """
         done = Int()
         params = list(params)
-        #if function != 'DisableMessageBoxes':
-        params.insert(0, params)
-        params.append(byref(done))
-        self.lib[function](*params)
+        if function != 'DisableMessageBoxes':
+            params.insert(0, self.iid)
+        params.append(done)
+        self.lib[function](*(ctypes.byref(param) for param in params))
+        done = done.value
         if done == 0:
             return
         errors = [
@@ -86,14 +89,22 @@ class BeamOptikDLL:
     def GetInterfaceInstance(self):
         """Call GetInterfaceInstance(). Returns instance_id."""
         # TODO: doc says both params are integers not pointers to integers
-        self('GetInterfaceInstance')
+        if self.iid.value is None:
+            self.iid = Int()
+            try:
+                self('GetInterfaceInstance')
+            except RuntimeError:
+                self.iid = None
+                raise
         return self.iid.value
 
     def FreeInterfaceInstance(self):
         """Call FreeInterfaceInstance()."""
         # TODO: doc says both params are integers not pointers to integers
         # TODO: doc says first param (iid) is return value as well
-        self('FreeInterfaceInstance')
+        if self.iid is not None:
+            self('FreeInterfaceInstance')
+            self.iid = None
 
     def DisableMessageBoxes(self):
         """Call DisableMessageBoxes()."""
@@ -104,31 +115,31 @@ class BeamOptikDLL:
     def GetDVMStatus(self):
         """Call GetDVMStatus(). Returns status."""
         status = Int()
-        self('GetDVMStatus', byref(status))
+        self('GetDVMStatus', status)
         return status.value
 
     def SelectVAcc(self, vaccnum):
         """Call SelectVAcc()."""
-        self('SelectVAcc', byref(Int(vaccnum)))
+        self('SelectVAcc', Int(vaccnum))
 
     def SelectMEFI(self, vaccnum,
-            energy, focus,
-            intensity, gantry_angle,
+            energy_channel, focus_channel,
+            intensity_channel, gantry_angle_channel,
             energy_value, focus_value,
             intensity_value, gantry_angle_value):
         """Call SelectMEFI()."""
         # TODO: doc says, done is directly after gantry_angle
         # TODO: doc does not specify whether the *_value params are output
         self('SelectMEFI', vaccnum,
-                byref(energy), byref(focus),
-                byref(intensity), byref(gantry_angle),
-                byref(energy_value), byref(focus_value),
-                byref(intensity_value), byref(gantry_angle_value))
+                energy_channel, focus_channel,
+                intensity_channel, gantry_angle_channel,
+                energy_value, focus_value,
+                intensity_value, gantry_angle_value)
 
     def GetSelectedVAcc(self):
         """Call GetSelectedVAcc(). Returns vaccnum."""
         vaccnum = Int()
-        self('GetSelectedVAcc', byref(vaccnum))
+        self('GetSelectedVAcc', vaccnum)
         return vaccnum.value
 
     def GetFloatValue(self, name):
@@ -138,7 +149,7 @@ class BeamOptikDLL:
         # TODO: doc says this is double, but function name indicates float
         options = Int()
         value = Double()
-        self('GetFloatValue', Str(name), byref(value), byref(options))
+        self('GetFloatValue', Str(name), value, options)
         return value.value
 
     def SetFloatValue(self, name, value):
@@ -147,11 +158,11 @@ class BeamOptikDLL:
         # whether options is input or output
         # TODO: doc says this is double, but function name indicates float
         options = Int()
-        self('SetFloatValue', Str(name), byref(Double(value)), byref(options))
+        self('SetFloatValue', Str(name), Double(value), options)
 
     def ExecuteChanges(self, options):
         """Call ExecuteChanges()."""
-        self('ExecuteChanges', byref(Int(options)))
+        self('ExecuteChanges', Int(options))
 
     def SetNewValueCallback(self, callback):
         """Call SetNewValueCallback(). Not implemented!"""
@@ -166,7 +177,7 @@ class BeamOptikDLL:
         # TODO: doc gives no clue about differences to plain GetFloatValue
         options = Int()
         value = Double()
-        self('GetFloatValueSD', Str(name), byref(value), byref(options))
+        self('GetFloatValueSD', Str(name), value, options)
         return value.value
 
     def GetLastFloatValueSD(self, name):
@@ -176,7 +187,7 @@ class BeamOptikDLL:
         # TODO: doc gives no clue about differences to plain GetFloatValue
         options = Int()
         value = Double()
-        self('GetLastFloatValueSD', Str(name), byref(value), byref(options))
+        self('GetLastFloatValueSD', Str(name), value, options)
         return value.value
 
     def StartRampDataGeneration(self, name):
@@ -208,10 +219,10 @@ class BeamOptikDLL:
         intensity_channel = Int()
         gantry_angle_channel = Int()
         self('SelectMEFI',
-                byref(energy_value), byref(focus_value),
-                byref(intensity_value), byref(gantry_angle_value),
-                byref(energy_channel), byref(focus_channel),
-                byref(intensity_channel), byref(gantry_angle_channel))
+                energy_value, focus_value,
+                intensity_value, gantry_angle_value,
+                energy_channel, focus_channel,
+                intensity_channel, gantry_angle_channel)
         return energy_value.value, focus_value.value,
                 intensity_value.value, gantry_angle_value,.value
                 energy_channel.value, focus_channel.value,
