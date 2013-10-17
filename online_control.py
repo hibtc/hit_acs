@@ -50,23 +50,7 @@ class BeamOptikDLL:
         self.lib = library
         self.iid = None
 
-    def __call__(self, function, *params):
-        """
-        Call the specified method.
-
-        This is a low-level function that should only be used internally.
-
-        The params must neither include piInstance nor piDone.
-        If an error is returned from the library a RuntimeError will be raised.
-
-        """
-        done = Int()
-        params = list(params)
-        if function != 'DisableMessageBoxes':
-            params.insert(0, self.iid)
-        params.append(done)
-        self.lib[function](*(ctypes.byref(param) for param in params))
-        done = done.value
+    def _check_return(self, done):
         if done == 0:
             return
         errors = [
@@ -86,9 +70,30 @@ class BeamOptikDLL:
         else:
             raise RuntimeError("Unknown error: %i" % done)
 
+    def __call__(self, function, *params):
+        """
+        Call the specified method.
+
+        This is a low-level function that should only be used internally.
+
+        The params must neither include piInstance nor piDone. If an error
+        is returned from the library a RuntimeError will be raised.
+
+        """
+        done = Int()
+        params = list(params)
+        if function != 'DisableMessageBoxes':
+            params.insert(0, self.iid)
+        if function == 'SelectMEFI':
+            params.insert(5, done)
+        else:
+            params.append(done)
+
+        self.lib[function](*(ctypes.byref(param) for param in params))
+        self._check_return(done.value)
+
     def GetInterfaceInstance(self):
         """Call GetInterfaceInstance(). Returns instance_id."""
-        # TODO: doc says both params are integers not pointers to integers
         if self.iid.value is None:
             self.iid = Int()
             try:
@@ -100,16 +105,12 @@ class BeamOptikDLL:
 
     def FreeInterfaceInstance(self):
         """Call FreeInterfaceInstance()."""
-        # TODO: doc says both params are integers not pointers to integers
-        # TODO: doc says first param (iid) is return value as well
         if self.iid is not None:
             self('FreeInterfaceInstance')
             self.iid = None
 
     def DisableMessageBoxes(self):
         """Call DisableMessageBoxes()."""
-        # TODO: doc says, there is no parameter iid
-        # TODO: doc says, done is an integer not a pointer
         self('DisableMessageBoxes')
 
     def GetDVMStatus(self):
@@ -122,19 +123,34 @@ class BeamOptikDLL:
         """Call SelectVAcc()."""
         self('SelectVAcc', Int(vaccnum))
 
+    MEFIValue = namedtuple('MEFIValue', [
+        'EnergyChannel', 'FocusChannel',
+        'IntensityChannel', 'GantryAngleChannel',
+        'EnergyValue', 'FocusValue',
+        'IntensityValue', 'GantryAngleValue'])
+
     def SelectMEFI(self, vaccnum,
             energy_channel, focus_channel,
-            intensity_channel, gantry_angle_channel,
-            energy_value, focus_value,
-            intensity_value, gantry_angle_value):
+            intensity_channel, gantry_angle_channel):
         """Call SelectMEFI()."""
-        # TODO: doc says, done is directly after gantry_angle
-        # TODO: doc does not specify whether the *_value params are output
+        energy_value = Double()
+        focus_value = Double(),
+        intensity_value = Double()
+        gantry_angle_value = Double()
         self('SelectMEFI', vaccnum,
-                energy_channel, focus_channel,
-                intensity_channel, gantry_angle_channel,
-                energy_value, focus_value,
-                intensity_value, gantry_angle_value)
+             energy_channel, focus_channel,
+             intensity_channel, gantry_angle_channel,
+             energy_value, focus_value,
+             intensity_value, gantry_angle_value)
+        return self.MEFIValue(
+            EnergyChannel=energy_channel,
+            FocusChannel=focus_channel,
+            IntensityChannel=intensity_channel,
+            GantryAngleChannel=gantry_angle_channel,
+            EnergyValue=energy_value.value,
+            FocusValue=focus_value.value,
+            IntensityValue=intensity_value.value,
+            GantryAngleValue=gantry_angle_value.value)
 
     def GetSelectedVAcc(self):
         """Call GetSelectedVAcc(). Returns vaccnum."""
@@ -146,7 +162,6 @@ class BeamOptikDLL:
         """Call GetFloatValue(). Returns value."""
         # TODO: doc does not describe what options are possible and
         # whether options is input or output
-        # TODO: doc says this is double, but function name indicates float
         options = Int()
         value = Double()
         self('GetFloatValue', Str(name), value, options)
@@ -156,7 +171,6 @@ class BeamOptikDLL:
         """Call SetFloatValue()."""
         # TODO: doc does not describe what options are possible and
         # whether options is input or output
-        # TODO: doc says this is double, but function name indicates float
         options = Int()
         self('SetFloatValue', Str(name), Double(value), options)
 
@@ -173,8 +187,6 @@ class BeamOptikDLL:
     def GetFloatValueSD(self, name):
         """Call GetFloatValueSD(). Retuns value."""
         # TODO: doc does not specify valid values for options
-        # TODO: doc does not specify whether options is input or output
-        # TODO: doc gives no clue about differences to plain GetFloatValue
         options = Int()
         value = Double()
         self('GetFloatValueSD', Str(name), value, options)
@@ -183,8 +195,6 @@ class BeamOptikDLL:
     def GetLastFloatValueSD(self, name):
         """Call GetLastFloatValueSD(). Retuns value."""
         # TODO: doc does not specify valid values for options
-        # TODO: doc does not specify whether options is input or output
-        # TODO: doc gives no clue about differences to plain GetFloatValue
         options = Int()
         value = Double()
         self('GetLastFloatValueSD', Str(name), value, options)
@@ -219,14 +229,19 @@ class BeamOptikDLL:
         intensity_channel = Int()
         gantry_angle_channel = Int()
         self('SelectMEFI',
-                energy_value, focus_value,
-                intensity_value, gantry_angle_value,
-                energy_channel, focus_channel,
-                intensity_channel, gantry_angle_channel)
-        return energy_value.value, focus_value.value,
-                intensity_value.value, gantry_angle_value,.value
-                energy_channel.value, focus_channel.value,
-                intensity_channel.value, gantry_angle_channel.value
+             energy_value, focus_value,
+             intensity_value, gantry_angle_value,
+             energy_channel, focus_channel,
+             intensity_channel, gantry_angle_channel)
+        return self.MEFIValue(
+            EnergyChannel=energy_channel.value,
+            FocusChannel=focus_channel.value,
+            IntensityChannel=intensity_channel.value,
+            GantryAngleChannel=gantry_angle_channel.value,
+            EnergyValue=energy_value.value,
+            FocusValue=focus_value.value,
+            IntensityValue=intensity_value.value,
+            GantryAngleValue=gantry_angle_value)
 
 
 class OnlineElements(collections.MutableMapping):
