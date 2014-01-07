@@ -38,7 +38,7 @@ def load_shared_library(shared_library_name = 'BeamOptikDLL'):
         # file not found
         return None
 
-class BeamOptikDLL:
+class BeamOptikDLL(object):
     """
     Thin wrapper around the BeamOptikDLL API.
 
@@ -308,7 +308,7 @@ class OnlineElements(collections.MutableMapping):
 
 
 
-class OnlineControl:
+class OnlineControl(object):
     """
     Beam-optic control component.
 
