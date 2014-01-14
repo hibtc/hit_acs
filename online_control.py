@@ -242,6 +242,7 @@ class BeamOptikDLL(object):
         :param GetSDOptions options: options
         :return: index of observable
         :rtype: int?
+        :raises RuntimeError: if the exit code indicates any error
 
         """
         # TODO: either docs are still bad or this function is weird
@@ -256,10 +257,11 @@ class BeamOptikDLL(object):
         :param str name: parameter name (<observable>_<element name>)
         :param GetSDOptions options: options
         :return: index of observable
+        :rtype: int?
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        # TODO: doc does not specify valid values for options
+        # TODO: either docs are still bad or this function is weird
         value = Double()
         self('GetLastFloatValueSD', Str(name), value, Int(options))
         return value.value
@@ -282,6 +284,7 @@ class BeamOptikDLL(object):
 
         :return: physical EFI values, EFI channel numbers
         :rtype: tuple(EFI, EFI)
+        :raises RuntimeError: if the exit code indicates any error
 
         """
         values = EFI(Double(), Double(), Double(), Double())
@@ -299,41 +302,36 @@ class OnlineElements(MutableMapping):
         """Initialize instance."""
         self.lib = library
 
-    def __getattr__(self, name):
-        """Get the online parameter. Alias for __getitem__."""
-        return self.getitem(name)
-
-    def __setattr__(self, name, value):
-        """Set the online parameter. Alias for __setitem__."""
-        return self.setitem(name, value)
-
     def __getitem__(self, name):
         """
         Get the online parameter.
 
-        TODO
+        :param str name: parameter name
+        :return: parameter value
+        :rtype: float
+        :raises RuntimeError: if the exit code indicates any error
 
         """
-        self.lib.GetFloatValue(name)
+        return self.lib.GetFloatValue(name)
 
     def __setitem__(self, name, value):
         """
         Set the online parameter.
 
-        TODO
+        :param str name: parameter name
+        :param float value: new parameter value
+        :raises RuntimeError: if the exit code indicates any error
 
         """
         self.lib.SetFloatValue(name, value)
 
     def __iter__(self):
-        """
-        Iterate all elements.
-        """
-        pass
+        """Iterate all elements."""
+        raise NotImplementedError # TODO
 
     def __len__(self):
         """Number of elements."""
-        pass
+        raise NotImplementedError # TODO
 
     # `MutableMapping` mixins:
     get          = MutableMapping.get
@@ -345,14 +343,16 @@ class OnlineElements(MutableMapping):
     update       = MutableMapping.update
     setdefault   = MutableMapping.setdefault
 
+    # Convenience aliases
+    __getattr__ = __getitem__
+    __setattr__ = __setitem__
+
     # Unsupported operations
     def __delitem__(self, name):
         """Invalid operation!"""
         raise RuntimeError("Go downstairs and remove it yourself!")
-
     pop          = __delitem__
     popitem      = __delitem__
-
 
 
 class OnlineControl(object):
