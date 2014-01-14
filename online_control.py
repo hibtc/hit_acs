@@ -13,7 +13,7 @@ element parameters.
 import ctypes
 from ctypes import c_double as Double, c_char_p as Str, c_int as Int
 
-import collections
+from collections import MutableMapping
 
 
 def load_shared_library(shared_library_name = 'BeamOptikDLL'):
@@ -244,7 +244,7 @@ class BeamOptikDLL(object):
             GantryAngleValue=gantry_angle_value)
 
 
-class OnlineElements(collections.MutableMapping):
+class OnlineElements(MutableMapping):
     """
     Utility for accessing optics parameters online.
     """
@@ -289,14 +289,14 @@ class OnlineElements(collections.MutableMapping):
         pass
 
     # `MutableMapping` mixins:
-    get          = collections.MutableMapping.get
-    __contains__ = collections.MutableMapping.__contains__
-    keys         = collections.MutableMapping.keys
-    items        = collections.MutableMapping.items
-    values       = collections.MutableMapping.values
-    clear        = collections.MutableMapping.clear
-    update       = collections.MutableMapping.update
-    setdefault   = collections.MutableMapping.setdefault
+    get          = MutableMapping.get
+    __contains__ = MutableMapping.__contains__
+    keys         = MutableMapping.keys
+    items        = MutableMapping.items
+    values       = MutableMapping.values
+    clear        = MutableMapping.clear
+    update       = MutableMapping.update
+    setdefault   = MutableMapping.setdefault
 
     # Unsupported operations
     def __delitem__(self, name):
