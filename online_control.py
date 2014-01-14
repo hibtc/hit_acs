@@ -4,8 +4,6 @@ Beam-optic control component.
 The main component is the class `OnlineControl`. This class is responsible
 for managing the interaction between model and online control.
 
-There is also `load_shared_library` to load a runtime library (.dll/.so).
-
 Finally, `OnlineElements` is used for dictionary-like access of online
 element parameters.
 
@@ -31,28 +29,6 @@ DVMStatus = enum('Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error')
 GetOptions = enum('Current', 'Saved')
 ExecOptions = enum('CalcAll', 'CalcDif', 'SimplyStore')
 GetSDOptions = enum('Current', 'Database', 'Test')
-
-def load_shared_library(shared_library_name = 'BeamOptikDLL'):
-    """
-    Load the shared library.
-
-    Currently you must not pass the full file name. It will be autocompleted
-    at runtime.
-
-    """
-    try:
-        # load a stdcall library (winapi calling convention)
-        loader = ctypes.windll.LoadLibrary
-        suffix = '.dll'
-    except AttributeError:
-        # load a cdecl library (c++ standard calling convention)
-        loader = ctypes.cdll.LoadLibrary
-        suffix = '.so'
-    try:
-        return loader(shared_library_name + suffix)
-    except OSError:
-        # file not found
-        return None
 
 class BeamOptikDLL(object):
     """
@@ -390,18 +366,30 @@ class OnlineControl(object):
     """
     lib = None
 
-    def __init__(self, model, shared_library=None):
+    def __init__(self, model, lib=None):
         """Initialize the online control."""
-        self.startup(shared_library)
+        self.startup(lib)
+
+    @classmethod
+    def create(cls, model):
+        """
+        Load the shared library and return an OnlineControl handle to it.
+
+        If the library is not found an OSError is raised. On linux an
+        AttributeError is raised.
+
+        """
+        lib = BeamOptikDLL(ctypes.windll.LoadLibrary('BeamOptikDLL.dll'))
+        return cls(model, lib)
 
     def startup(self, library):
         """Run the library's initialization routines and store the object."""
         self.uninit()
-        if shared_library:
+        if lib:
             # TODO...
-            self.lib = shared_library
+            self.lib = lib
             self.instance_id = self.lib.GetInterfaceInstance(0, 0)
-            self.elements = OnlineElements(shared_library)
+            self.elements = OnlineElements(lib)
 
     @property
     def mefi(self):
