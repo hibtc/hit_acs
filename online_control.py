@@ -15,6 +15,7 @@ from ctypes import c_double as Double, c_char_p as Str, c_int as Int
 
 from collections import MutableMapping
 
+EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
 
 def load_shared_library(shared_library_name = 'BeamOptikDLL'):
     """
@@ -123,34 +124,20 @@ class BeamOptikDLL(object):
         """Call SelectVAcc()."""
         self('SelectVAcc', Int(vaccnum))
 
-    MEFIValue = namedtuple('MEFIValue', [
-        'EnergyChannel', 'FocusChannel',
-        'IntensityChannel', 'GantryAngleChannel',
-        'EnergyValue', 'FocusValue',
-        'IntensityValue', 'GantryAngleValue'])
+    def SelectMEFI(self, vaccnum, channels):
+        """
+        Select MEFI combination.
 
-    def SelectMEFI(self, vaccnum,
-            energy_channel, focus_channel,
-            intensity_channel, gantry_angle_channel):
-        """Call SelectMEFI()."""
-        energy_value = Double()
-        focus_value = Double(),
-        intensity_value = Double()
-        gantry_angle_value = Double()
-        self('SelectMEFI', vaccnum,
-             energy_channel, focus_channel,
-             intensity_channel, gantry_angle_channel,
-             energy_value, focus_value,
-             intensity_value, gantry_angle_value)
-        return self.MEFIValue(
-            EnergyChannel=energy_channel,
-            FocusChannel=focus_channel,
-            IntensityChannel=intensity_channel,
-            GantryAngleChannel=gantry_angle_channel,
-            EnergyValue=energy_value.value,
-            FocusValue=focus_value.value,
-            IntensityValue=intensity_value.value,
-            GantryAngleValue=gantry_angle_value.value)
+        :param int vaccnum: virtual accelerator number
+        :param EFI channels: EFI channel numbers
+        :return: physical EFI values
+        :rtype: EFI
+        :raises RuntimeError: if the function call fails
+
+        """
+        values = EFI(Double(), Double(), Double(), Double())
+        self('SelectMEFI', vaccnum, *(list(channels) + list(values)))
+        return EFI(*[v.value for v in values])
 
     def GetSelectedVAcc(self):
         """Call GetSelectedVAcc(). Returns vaccnum."""
@@ -216,32 +203,18 @@ class BeamOptikDLL(object):
         raise NotImplementedError
 
     def GetMEFIValue(self)
-        """Call SelectMEFI(). Returns double(E,F,I,Angle), channel(E,F,I,Angle)."""
-        # TODO: why are channels here after values as opposed to SelectMEFI
-        # TODO: why is here no vaccnum argument
-        # TODO: is all output?
-        energy_value, = Double()
-        focus_value = Dobule()
-        intensity_value = Double()
-        gantry_angle_value = Double()
-        energy_channel = Int()
-        focus_channel = Int()
-        intensity_channel = Int()
-        gantry_angle_channel = Int()
-        self('SelectMEFI',
-             energy_value, focus_value,
-             intensity_value, gantry_angle_value,
-             energy_channel, focus_channel,
-             intensity_channel, gantry_angle_channel)
-        return self.MEFIValue(
-            EnergyChannel=energy_channel.value,
-            FocusChannel=focus_channel.value,
-            IntensityChannel=intensity_channel.value,
-            GantryAngleChannel=gantry_angle_channel.value,
-            EnergyValue=energy_value.value,
-            FocusValue=focus_value.value,
-            IntensityValue=intensity_value.value,
-            GantryAngleValue=gantry_angle_value)
+        """
+        Retrieve EFI values for current selection.
+
+        :return: physical EFI values, EFI channel numbers
+        :rtype: tuple(EFI, EFI)
+
+        """
+        values = EFI(Double(), Double(), Double(), Double())
+        channels = EFI(Int(), Int(), Int(), Int())
+        self('SelectMEFI', *(list(values) + list(channels)))
+        return (EFI(*[v.value for v in values]),
+                EFI(*[c.value for c in channels]))
 
 
 class OnlineElements(MutableMapping):
