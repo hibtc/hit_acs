@@ -6,7 +6,8 @@ interface.
 
 """
 from collections import namedtuple
-from ctypes import windll, c_double as Double, c_char_p as Str, c_int as Int
+from ctypes import c_double as Double, c_char_p as Str, c_int as Int
+import ctypes
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
 
@@ -34,7 +35,11 @@ class BeamOptikDLL(object):
     iDone. Nothing else.
 
     """
-    lib = windll.LoadLibrary('BeamOptikDLL.dll')
+    try:
+        lib = ctypes.windll.LoadLibrary('BeamOptikDLL.dll')
+    except AttributeError:
+        # On linux (for testing)
+        lib = None
 
     #----------------------------------------
     # internal methods
