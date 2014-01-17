@@ -283,7 +283,7 @@ class BeamOptikDLL(object):
         """Call SetIPC_DVM_ID(). Not implemented!"""
         raise NotImplementedError # TODO
 
-    def GetMEFIValue(self)
+    def GetMEFIValue(self):
         """
         Retrieve EFI values for current selection.
 
