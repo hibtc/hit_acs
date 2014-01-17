@@ -97,8 +97,7 @@ class OnlineControl(object):
         AttributeError is raised.
 
         """
-        lib = BeamOptikDLL(windll.LoadLibrary('BeamOptikDLL.dll'))
-        return cls(model, lib)
+        return cls(model, BeamOptikDLL.GetInterfaceInstance())
 
     def startup(self, library):
         """Run the library's initialization routines and store the object."""
