@@ -36,15 +36,6 @@ class BeamOptikDLL(object):
     """
     lib = windll.LoadLibrary('BeamOptikDLL.dll')
 
-    def __init__(self, iid):
-        """
-        The constructur should not be invoked directly (except for testing).
-
-        Rather use the BeamOptikDLL.GetInterfaceInstance() classmethod.
-
-        """
-        self.iid = iid
-
     #----------------------------------------
     # internal methods
     #----------------------------------------
@@ -99,32 +90,8 @@ class BeamOptikDLL(object):
         cls.check_return(done.value)
 
     #----------------------------------------
-    # public API
+    # class level API
     #----------------------------------------
-
-    @classmethod
-    def GetInterfaceInstance(cls):
-        """
-        Connect to database and initialize DLL.
-
-        :return: new instance id
-        :rtype: int
-        :raises RuntimeError: if the exit code indicates any error
-
-        """
-        iid = Int()
-        cls.call('GetInterfaceInstance', iid)
-        return cls(iid)
-
-    def FreeInterfaceInstance(self):
-        """
-        Free resources.
-
-        :raises RuntimeError: if the exit code indicates any error
-
-        """
-        self.call('FreeInterfaceInstance', self.iid)
-        self.iid = None
 
     @classmethod
     def DisableMessageBoxes(cls):
@@ -135,6 +102,45 @@ class BeamOptikDLL(object):
 
         """
         cls.call('DisableMessageBoxes')
+
+    @classmethod
+    def GetInterfaceInstance(cls):
+        """
+        Create a BeamOptikDLL instance (connects DB and initialize DLL).
+
+        :return: new instance id
+        :rtype: int
+        :raises RuntimeError: if the exit code indicates any error
+
+        """
+        iid = Int()
+        cls.call('GetInterfaceInstance', iid)
+        return cls(iid)
+
+    #----------------------------------------
+    # object API
+    #----------------------------------------
+
+    def __init__(self, iid):
+        """
+        The constructur should not be invoked directly (except for testing).
+
+        Rather use the BeamOptikDLL.GetInterfaceInstance() classmethod.
+
+        :param ctypes.Int iid: InterfaceId
+
+        """
+        self.iid = iid
+
+    def FreeInterfaceInstance(self):
+        """
+        Free resources.
+
+        :raises RuntimeError: if the exit code indicates any error
+
+        """
+        self.call('FreeInterfaceInstance', self.iid)
+        self.iid = None
 
     def GetDVMStatus(self):
         """
