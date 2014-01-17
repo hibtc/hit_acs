@@ -11,7 +11,7 @@ setup(
     author_email='t_glaessle@gmx.de',
     maintainer='Thomas Gläßle',
     maintainer_email='t_glaessle@gmx.de',
-    url=None,
+    url='https://bitbucket.org/coldfix/hit-online-control',
     packages=['hit', 'hit.online_control'],
     namespace_packages=['hit'],
     classifiers=[
