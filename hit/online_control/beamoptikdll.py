@@ -16,7 +16,7 @@ def enum(*sequential):
         def __str__(self):
             return sequential[int(self)]
         def __repr__(self):
-            return '%s(%s=%d)' % (self.__class__.__name, self, int(self))
+            return '%s(%s=%d)' % (self.__class__.__name__, self, int(self))
     for i,v in enumerate(sequential):
         setattr(Enum, v, i)
     return Enum
