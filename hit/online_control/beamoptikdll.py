@@ -16,7 +16,7 @@ def enum(*sequential):
         def __str__(self):
             return sequential[int(self)]
         def __repr__(self):
-            return '%s(%s=%d)' % (self.__class__.__name, self, int(self))
+            return '%s(%s=%d)' % (self.__class__.__name__, self, int(self))
     for i,v in enumerate(sequential):
         setattr(Enum, v, i)
     return Enum
@@ -88,10 +88,12 @@ class BeamOptikDLL(object):
         done = Int()
         params = list(params)
         if function == 'SelectMEFI':
-            params.insert(5, done)
+            params.insert(6, done)
         else:
             params.append(done)
-        getattr(cls.lib, function)(*map(ctypes.byref, params))
+        def param(p):
+            return p if isinstance(p, Str) else ctypes.byref(p)
+        getattr(cls.lib, function)(*map(param, params))
         cls.check_return(done.value)
 
     #----------------------------------------
@@ -170,20 +172,26 @@ class BeamOptikDLL(object):
         """
         self.call('SelectVAcc', self.iid, Int(vaccnum))
 
-    def SelectMEFI(self, vaccnum, channels):
+    def SelectMEFI(self, vaccnum, energy, focus, intensity, gantry_angle=0):
         """
-        Select MEFI combination.
+        Select EFI combination for the currently selected VAcc.
 
         :param int vaccnum: virtual accelerator number (0-255)
-        :param EFI channels: EFI channel numbers
+        :param int energy: energy channel (1-255)
+        :param int focus: focus channel (1-6)
+        :param int intensity: intensity channel (1-15)
+        :param int gantry_angle: gantry angle index (1-36)
         :return: physical EFI values
         :rtype: EFI
         :raises RuntimeError: if the exit code indicates any error
 
+        CAUTION: SelectVAcc must be called before invoking this function!
+
         """
-        channels = [Int(c) for c in channels]
         values = [Double(), Double(), Double(), Double()]
-        self.call('SelectMEFI', self.iid, vaccnum, *(channels + values))
+        self.call('SelectMEFI', self.iid, Int(vaccnum),
+                  Int(energy), Int(focus), Int(intensity), Int(gantry_angle),
+                  *values)
         return EFI(*[v.value for v in values])
 
     def GetSelectedVAcc(self):
@@ -297,9 +305,9 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        values = EFI(Double(), Double(), Double(), Double())
-        channels = EFI(Int(), Int(), Int(), Int())
-        self.call('SelectMEFI', self.iid, *(list(values) + list(channels)))
+        values = [Double(), Double(), Double(), Double()]
+        channels = [Int(), Int(), Int(), Int()]
+        self.call('GetMEFIValue', self.iid, *(values + channels))
         return (EFI(*[v.value for v in values]),
                 EFI(*[c.value for c in channels]))
 
