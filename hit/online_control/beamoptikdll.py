@@ -305,9 +305,9 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        values = EFI(Double(), Double(), Double(), Double())
-        channels = EFI(Int(), Int(), Int(), Int())
-        self.call('SelectMEFI', self.iid, *(list(values) + list(channels)))
+        values = [Double(), Double(), Double(), Double()]
+        channels = [Int(), Int(), Int(), Int()]
+        self.call('GetMEFIValue', self.iid, *(values + channels))
         return (EFI(*[v.value for v in values]),
                 EFI(*[c.value for c in channels]))
 
