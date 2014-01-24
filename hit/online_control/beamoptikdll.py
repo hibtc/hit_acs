@@ -88,7 +88,7 @@ class BeamOptikDLL(object):
         done = Int()
         params = list(params)
         if function == 'SelectMEFI':
-            params.insert(5, done)
+            params.insert(6, done)
         else:
             params.append(done)
         getattr(cls.lib, function)(*map(ctypes.byref, params))
