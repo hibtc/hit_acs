@@ -91,7 +91,9 @@ class BeamOptikDLL(object):
             params.insert(6, done)
         else:
             params.append(done)
-        getattr(cls.lib, function)(*map(ctypes.byref, params))
+        def param(p):
+            return p if isinstance(p, Str) else ctypes.byref(p)
+        getattr(cls.lib, function)(*map(param, params))
         cls.check_return(done.value)
 
     #----------------------------------------
