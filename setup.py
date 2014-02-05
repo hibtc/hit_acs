@@ -14,6 +14,9 @@ setup(
     url='https://bitbucket.org/coldfix/hit-online-control',
     packages=['hit', 'hit.online_control'],
     namespace_packages=['hit'],
+    entry_points={
+        'gui_scripts': ['online_control = hit.online_control.__main__:main'],
+    },
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Intended Audience :: Developers',
