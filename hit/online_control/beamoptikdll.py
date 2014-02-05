@@ -281,8 +281,11 @@ class BeamOptikDLL(object):
         """
         # TODO: either docs are still bad or this function is weird
         value = Double()
-        self.call('GetLastFloatValueSD', self.iid, Str(name), value, Int(options))
-        return value.value
+        channels = [Int(), Int(), Int(), Int()]
+        self.call('GetLastFloatValueSD', self.iid, Str(name),
+                  value, Int(options),
+                  *channels)
+        return value.value, EFI(*[c.value for c in channels])
 
     def StartRampDataGeneration(self, name):
         """Call StartRampDataGeneration(). Not implemented!"""
