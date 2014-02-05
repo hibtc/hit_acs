@@ -10,23 +10,25 @@ console.
 .. _wxPython: http://wxpython.org/
 .. _PyCrust: http://wxpython.org/py.php
 
+The DLL is connected on startup and the wrapper object is stored in the
+global variable ``i``.
+
 """
 import wx
 import wx.py.crust
 
-from hit.online_control.beamoptikdll import BeamOptikDLL as dll, EFI, DVMStatus, GetOptions, ExecOptions, GetSDOptions
+from hit.online_control.beamoptikdll import BeamOptikDLL
 
 class App(wx.App):
     def OnInit(self):
         frame = wx.py.crust.CrustFrame()
         frame.Show()
         global i
-        i = dll.GetInterfaceInstance()
+        i = BeamOptikDLL.GetInterfaceInstance()
         return True
 
 def main():
     """Invoke GUI application."""
-    # TODO: add command line options (via docopt!)
     app = App(redirect=True, filename='error.log')
     app.MainLoop()
 

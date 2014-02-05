@@ -36,6 +36,9 @@ class BeamOptikDLL(object):
 
     """
     try:
+        # NOTE: this loads the DLL at import time, which (I believe) is
+        # reasonable. An ImportError will be raised if the DLL can't be
+        # loaded:
         lib = ctypes.windll.LoadLibrary('BeamOptikDLL.dll')
     except AttributeError:
         # On linux (for testing)
@@ -74,12 +77,12 @@ class BeamOptikDLL(object):
             raise ValueError("Unknown error: %i" % done)
 
     @classmethod
-    def call(cls, function, *params):
+    def _call(cls, function, *params):
         """
         Call the specified DLL function.
 
         :param str function: name of the function to call
-        :param params: ctype function parameters except for piInstance and piDone.
+        :param params: ctype function parameters except for piDone.
         :raises RuntimeError: if the exit code indicates any error
 
         For internal use only!
@@ -108,7 +111,7 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        cls.call('DisableMessageBoxes')
+        cls._call('DisableMessageBoxes')
 
     @classmethod
     def GetInterfaceInstance(cls):
@@ -121,7 +124,7 @@ class BeamOptikDLL(object):
 
         """
         iid = Int()
-        cls.call('GetInterfaceInstance', iid)
+        cls._call('GetInterfaceInstance', iid)
         return cls(iid)
 
     #----------------------------------------
@@ -137,7 +140,12 @@ class BeamOptikDLL(object):
         :param ctypes.Int iid: InterfaceId
 
         """
-        self.iid = iid
+        self._iid = iid
+
+    @property
+    def iid(self):
+        """Interface instance ID."""
+        return self._iid
 
     def FreeInterfaceInstance(self):
         """
@@ -146,8 +154,8 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        self.call('FreeInterfaceInstance', self.iid)
-        self.iid = None
+        self._call('FreeInterfaceInstance', self.iid)
+        self._iid = None
 
     def GetDVMStatus(self):
         """
@@ -159,7 +167,7 @@ class BeamOptikDLL(object):
 
         """
         status = Int()
-        self.call('GetDVMStatus', self.iid, status)
+        self._call('GetDVMStatus', self.iid, status)
         return DVMStatus(status.value)
 
     def SelectVAcc(self, vaccnum):
@@ -170,7 +178,7 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        self.call('SelectVAcc', self.iid, Int(vaccnum))
+        self._call('SelectVAcc', self.iid, Int(vaccnum))
 
     def SelectMEFI(self, vaccnum, energy, focus, intensity, gantry_angle=0):
         """
@@ -189,22 +197,22 @@ class BeamOptikDLL(object):
 
         """
         values = [Double(), Double(), Double(), Double()]
-        self.call('SelectMEFI', self.iid, Int(vaccnum),
-                  Int(energy), Int(focus), Int(intensity), Int(gantry_angle),
-                  *values)
+        self._call('SelectMEFI', self.iid, Int(vaccnum),
+                   Int(energy), Int(focus), Int(intensity), Int(gantry_angle),
+                   *values)
         return EFI(*[v.value for v in values])
 
     def GetSelectedVAcc(self):
         """
         Get selected virtual accelerator.
 
-        :return: virtual accelerator number
+        :return: virtual accelerator number (0-255)
         :rtype: int
         :raises RuntimeError: if the exit code indicates any error
 
         """
         vaccnum = Int()
-        self.call('GetSelectedVAcc', self.iid, vaccnum)
+        self._call('GetSelectedVAcc', self.iid, vaccnum)
         return vaccnum.value
 
     def GetFloatValue(self, name, options=GetOptions.Current):
@@ -219,7 +227,7 @@ class BeamOptikDLL(object):
 
         """
         value = Double()
-        self.call('GetFloatValue', self.iid, Str(name), value, Int(options))
+        self._call('GetFloatValue', self.iid, Str(name), value, Int(options))
         return value.value
 
     def SetFloatValue(self, name, value, options=0):
@@ -234,7 +242,7 @@ class BeamOptikDLL(object):
         Changes take effect after calling :func:`ExecuteChanges`.
 
         """
-        self.call('SetFloatValue', self.iid, Str(name), Double(value), Int(options))
+        self._call('SetFloatValue', self.iid, Str(name), Double(value), Int(options))
 
     def ExecuteChanges(self, options):
         """
@@ -244,7 +252,7 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        self.call('ExecuteChanges', self.iid, Int(options))
+        self._call('ExecuteChanges', self.iid, Int(options))
 
     def SetNewValueCallback(self, callback):
         """Call SetNewValueCallback(). Not implemented!"""
@@ -258,31 +266,33 @@ class BeamOptikDLL(object):
 
         :param str name: parameter name (<observable>_<element name>)
         :param GetSDOptions options: options
-        :return: index of observable
-        :rtype: int?
+        :return: measured value
+        :rtype: float
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        # TODO: either docs are still bad or this function is weird
         value = Double()
-        self.call('GetFloatValueSD', self.iid, Str(name), value, Int(options))
+        self._call('GetFloatValueSD', self.iid, Str(name), value, Int(options))
         return value.value
 
-    def GetLastFloatValueSD(self, name, options=0):
+    def GetLastFloatValueSD(self, name, vaccnum, options=0):
         """
         Get previous beam measurement at specific element.
 
         :param str name: parameter name (<observable>_<element name>)
+        :param int vaccnum: virtual accelerator number (0-255)
         :param GetSDOptions options: options
-        :return: index of observable
-        :rtype: int?
+        :return: measured value and EFI combination
+        :rtype: tuple
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        # TODO: either docs are still bad or this function is weird
         value = Double()
-        self.call('GetLastFloatValueSD', self.iid, Str(name), value, Int(options))
-        return value.value
+        channels = [Int(), Int(), Int(), Int()]
+        self._call('GetLastFloatValueSD', self.iid, Str(name),
+                   value, Int(options),
+                   *channels)
+        return value.value, EFI(*[c.value for c in channels])
 
     def StartRampDataGeneration(self, name):
         """Call StartRampDataGeneration(). Not implemented!"""
@@ -307,7 +317,7 @@ class BeamOptikDLL(object):
         """
         values = [Double(), Double(), Double(), Double()]
         channels = [Int(), Int(), Int(), Int()]
-        self.call('GetMEFIValue', self.iid, *(values + channels))
+        self._call('GetMEFIValue', self.iid, *(values + channels))
         return (EFI(*[v.value for v in values]),
                 EFI(*[c.value for c in channels]))
 
