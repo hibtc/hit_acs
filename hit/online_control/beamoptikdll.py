@@ -140,7 +140,12 @@ class BeamOptikDLL(object):
         :param ctypes.Int iid: InterfaceId
 
         """
-        self.iid = iid
+        self._iid = iid
+
+    @property
+    def iid(self):
+        """Interface instance ID."""
+        return self._iid
 
     def FreeInterfaceInstance(self):
         """
@@ -150,7 +155,7 @@ class BeamOptikDLL(object):
 
         """
         self.call('FreeInterfaceInstance', self.iid)
-        self.iid = None
+        self._iid = None
 
     def GetDVMStatus(self):
         """
