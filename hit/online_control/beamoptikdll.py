@@ -36,6 +36,9 @@ class BeamOptikDLL(object):
 
     """
     try:
+        # NOTE: this loads the DLL at import time, which (I believe) is
+        # reasonable. An ImportError will be raised if the DLL can't be
+        # loaded:
         lib = ctypes.windll.LoadLibrary('BeamOptikDLL.dll')
     except AttributeError:
         # On linux (for testing)
@@ -79,7 +82,7 @@ class BeamOptikDLL(object):
         Call the specified DLL function.
 
         :param str function: name of the function to call
-        :param params: ctype function parameters except for piInstance and piDone.
+        :param params: ctype function parameters except for piDone.
         :raises RuntimeError: if the exit code indicates any error
 
         For internal use only!
@@ -198,7 +201,7 @@ class BeamOptikDLL(object):
         """
         Get selected virtual accelerator.
 
-        :return: virtual accelerator number
+        :return: virtual accelerator number (0-255)
         :rtype: int
         :raises RuntimeError: if the exit code indicates any error
 
@@ -258,12 +261,11 @@ class BeamOptikDLL(object):
 
         :param str name: parameter name (<observable>_<element name>)
         :param GetSDOptions options: options
-        :return: index of observable
-        :rtype: int?
+        :return: measured value
+        :rtype: float
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        # TODO: either docs are still bad or this function is weird
         value = Double()
         self.call('GetFloatValueSD', self.iid, Str(name), value, Int(options))
         return value.value
@@ -273,13 +275,13 @@ class BeamOptikDLL(object):
         Get previous beam measurement at specific element.
 
         :param str name: parameter name (<observable>_<element name>)
+        :param int vaccnum: virtual accelerator number (0-255)
         :param GetSDOptions options: options
-        :return: index of observable
-        :rtype: int?
+        :return: measured value and EFI combination
+        :rtype: tuple
         :raises RuntimeError: if the exit code indicates any error
 
         """
-        # TODO: either docs are still bad or this function is weird
         value = Double()
         channels = [Int(), Int(), Int(), Int()]
         self.call('GetLastFloatValueSD', self.iid, Str(name),
