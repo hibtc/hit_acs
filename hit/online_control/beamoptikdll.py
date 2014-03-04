@@ -294,13 +294,27 @@ class BeamOptikDLL(object):
                    *channels)
         return value.value, EFI(*[c.value for c in channels])
 
-    def StartRampDataGeneration(self, name):
-        """Call StartRampDataGeneration(). Not implemented!"""
-        raise NotImplementedError # TODO
+    def StartRampDataGeneration(self, vaccnum, energy, focus, intensity):
+        """
+        Call StartRampDataGeneration().
+        """
+        order_num = Int()
+        self._call('StartRampDataGeneration', self.iid,
+                   Int(vaccnum), Int(energy), Int(focus), Int(intensity),
+                   order_num)
+        return order_num.value
 
-    def GetRampDataValue(self, name):
-        """Call GetRampDataValue(). Not implemented!"""
-        raise NotImplementedError # TODO
+    def GetRampDataValue(self, order_num, event_num, delay,
+                         parameter_name, device_name):
+        """
+        Call GetRampDataValue()
+        """
+        value = Double()
+        self._call('GetRampDataValue', self.iid,
+                   Int(order_num), Int(event_num), Int(delay),
+                   Str(parameter_name), Str(device_name),
+                   value)
+        return value.value
 
     def SetIPC_DVM_ID(self, name):
         """Call SetIPC_DVM_ID(). Not implemented!"""
