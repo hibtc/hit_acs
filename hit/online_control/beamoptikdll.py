@@ -312,6 +312,12 @@ class BeamOptikDLL(object):
         self._call('StartRampDataGeneration', self.iid,
                    Int(vaccnum), Int(energy), Int(focus), Int(intensity),
                    order_num)
+        sel_efi = self._selected_efi
+        if (vaccnum != self._selected_vacc or 
+            energy != sel_efi.energy or
+            focus != sel_efi.focus or
+            intensity != sel_efi.intensity):
+            self._logger.warn("You must call SelectEFI() before StartRampDataGeneration()!")
         return order_num.value
 
     def GetRampDataValue(self, order_num, event_num, delay,
