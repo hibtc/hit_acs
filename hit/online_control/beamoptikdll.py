@@ -258,7 +258,7 @@ class BeamOptikDLL(object):
         """Call SetNewValueCallback(). Not implemented!"""
         # TODO: docs do not specify when this is actually called
         # TODO: howto create a python callback? Use Cython?
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def GetFloatValueSD(self, name, options=0):
         """
@@ -296,15 +296,15 @@ class BeamOptikDLL(object):
 
     def StartRampDataGeneration(self, name):
         """Call StartRampDataGeneration(). Not implemented!"""
-        raise NotImplementedError # TODO
+        raise NotImplementedError() # TODO
 
     def GetRampDataValue(self, name):
         """Call GetRampDataValue(). Not implemented!"""
-        raise NotImplementedError # TODO
+        raise NotImplementedError() # TODO
 
     def SetIPC_DVM_ID(self, name):
         """Call SetIPC_DVM_ID(). Not implemented!"""
-        raise NotImplementedError # TODO
+        raise NotImplementedError() # TODO
 
     def GetMEFIValue(self):
         """
