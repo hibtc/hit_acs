@@ -16,20 +16,25 @@ global variable ``i``.
 """
 import wx
 import wx.py.crust
+import logging
 
 from hit.online_control.beamoptikdll import BeamOptikDLL
 
 class App(wx.App):
     def OnInit(self):
-        frame = wx.py.crust.CrustFrame()
+        loc = {}
+        frame = wx.py.crust.CrustFrame(locals=loc)
         frame.Show()
-        global i
-        i = BeamOptikDLL.GetInterfaceInstance()
+        frame.crust.shell.redirectStdout()
+        frame.crust.shell.redirectStderr()
+        logging.basicConfig(level=logging.INFO)
+        loc['frame'] = frame
+        loc['i'] = BeamOptikDLL.GetInterfaceInstance()
         return True
 
 def main():
     """Invoke GUI application."""
-    app = App(redirect=True, filename='error.log')
+    app = App(redirect=False)
     app.MainLoop()
 
 if __name__ == '__main__':
