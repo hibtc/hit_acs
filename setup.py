@@ -11,10 +11,18 @@ setup(
     maintainer='Thomas Gläßle',
     maintainer_email='t_glaessle@gmx.de',
     url='https://bitbucket.org/coldfix/hit-online-control',
-    packages=['hit', 'hit.online_control'],
+    packages=[
+        'hit',
+        'hit.online_control'
+    ],
     namespace_packages=['hit'],
     entry_points={
-        'gui_scripts': ['online_control = hit.online_control.__main__:main'],
+        'gui_scripts': [
+            'online_control = hit.online_control.__main__:main'
+        ],
+        'madgui.core.notebook.menu': [
+            'online_control = hit.online_control.madgui:Plugin'
+        ]
     },
     classifiers=[
         'Development Status :: 3 - Alpha',
