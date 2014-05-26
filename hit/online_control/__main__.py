@@ -11,7 +11,7 @@ console.
 .. _PyCrust: http://wxpython.org/py.php
 
 The DLL is connected on startup and the wrapper object is stored in the
-global variable ``i``.
+global variable ``dvm``.
 
 """
 import wx
@@ -29,7 +29,7 @@ class App(wx.App):
         frame.crust.shell.redirectStderr()
         logging.basicConfig(level=logging.INFO)
         loc['frame'] = frame
-        loc['i'] = BeamOptikDLL.GetInterfaceInstance()
+        loc['dvm'] = BeamOptikDLL.GetInterfaceInstance()
         return True
 
 def main():
