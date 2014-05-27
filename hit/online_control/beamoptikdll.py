@@ -3,17 +3,21 @@ Low level wrapper for the HIT accelerator control software.
 
 Wraps the API of the 'BeamOptikDLL.dll' library to a more pythonic
 interface.
-
 """
+
 from collections import namedtuple
 from ctypes import c_double as Double, c_char_p as Str, c_int as Int
 import ctypes
 import logging
 
+
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
 
+
 def enum(*sequential):
+    """Create a simple enum type (like in C++)."""
     class Enum(int):
+        """Enum type."""
         def __str__(self):
             return sequential[int(self)]
         def __repr__(self):
@@ -22,6 +26,7 @@ def enum(*sequential):
         setattr(Enum, v, i)
     return Enum
 
+
 DVMStatus = enum('Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error')
 GetOptions = enum('Current', 'Saved')
 ExecOptions = enum('CalcAll', 'CalcDif', 'SimplyStore')
@@ -29,13 +34,14 @@ GetSDOptions = enum('Current', 'Database', 'Test')
 
 
 class BeamOptikDLL(object):
+
     """
     Thin wrapper around the BeamOptikDLL API.
 
     It abstracts the ctypes data types and automates InterfaceId as well as
     iDone. Nothing else.
-
     """
+
     try:
         # NOTE: this loads the DLL at import time, which (I believe) is
         # reasonable. An ImportError will be raised if the DLL can't be
@@ -70,7 +76,6 @@ class BeamOptikDLL(object):
         :param int done: exit code of an DLL function
         :raises RuntimeError: if the exit code is a known error code != 0
         :raises ValueError: if the exit code is unknown
-
         """
         if 0 < done and done < len(cls.error_messages):
             raise RuntimeError(cls.error_messages[done])
@@ -87,7 +92,6 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         For internal use only!
-
         """
         done = Int()
         params = list(params)
@@ -110,7 +114,6 @@ class BeamOptikDLL(object):
         Prevent creation of certain message boxes.
 
         :raises RuntimeError: if the exit code indicates any error
-
         """
         cls._call('DisableMessageBoxes')
 
@@ -122,7 +125,6 @@ class BeamOptikDLL(object):
         :return: new instance id
         :rtype: int
         :raises RuntimeError: if the exit code indicates any error
-
         """
         iid = Int()
         cls._call('GetInterfaceInstance', iid)
@@ -139,7 +141,6 @@ class BeamOptikDLL(object):
         Rather use the BeamOptikDLL.GetInterfaceInstance() classmethod.
 
         :param ctypes.Int iid: InterfaceId
-
         """
         self._iid = iid
         self._selected_vacc = None
@@ -156,7 +157,6 @@ class BeamOptikDLL(object):
         Free resources.
 
         :raises RuntimeError: if the exit code indicates any error
-
         """
         self._call('FreeInterfaceInstance', self.iid)
         self._iid = None
@@ -168,7 +168,6 @@ class BeamOptikDLL(object):
         :return: DVM status
         :rtype: DVMStatus
         :raises RuntimeError: if the exit code indicates any error
-
         """
         status = Int()
         self._call('GetDVMStatus', self.iid, status)
@@ -180,7 +179,6 @@ class BeamOptikDLL(object):
 
         :param int vaccnum: virtual accelerator number (0-255)
         :raises RuntimeError: if the exit code indicates any error
-
         """
         self._call('SelectVAcc', self.iid, Int(vaccnum))
         self._selected_vacc = vaccnum
@@ -199,7 +197,6 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         CAUTION: SelectVAcc must be called before invoking this function!
-
         """
         values = [Double(), Double(), Double(), Double()]
         self._call('SelectMEFI', self.iid, Int(vaccnum),
@@ -218,7 +215,6 @@ class BeamOptikDLL(object):
         :return: virtual accelerator number (0-255)
         :rtype: int
         :raises RuntimeError: if the exit code indicates any error
-
         """
         vaccnum = Int()
         self._call('GetSelectedVAcc', self.iid, vaccnum)
@@ -233,7 +229,6 @@ class BeamOptikDLL(object):
         :return: parameter value
         :rtype: float
         :raises RuntimeError: if the exit code indicates any error
-
         """
         value = Double()
         self._call('GetFloatValue', self.iid, Str(name), value, Int(options))
@@ -249,7 +244,6 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
 
         Changes take effect after calling :func:`ExecuteChanges`.
-
         """
         self._call('SetFloatValue', self.iid, Str(name), Double(value), Int(options))
 
@@ -259,7 +253,6 @@ class BeamOptikDLL(object):
 
         :param ExecOptions options: what to do exactly
         :raises RuntimeError: if the exit code indicates any error
-
         """
         self._call('ExecuteChanges', self.iid, Int(options))
 
@@ -278,7 +271,6 @@ class BeamOptikDLL(object):
         :return: measured value
         :rtype: float
         :raises RuntimeError: if the exit code indicates any error
-
         """
         value = Double()
         self._call('GetFloatValueSD', self.iid, Str(name), value, Int(options))
@@ -296,7 +288,6 @@ class BeamOptikDLL(object):
         :return: measured value and EFI combination
         :rtype: tuple
         :raises RuntimeError: if the exit code indicates any error
-
         """
         value = Double()
         self._call('GetLastFloatValueSD', self.iid, Str(name),
@@ -343,12 +334,9 @@ class BeamOptikDLL(object):
         :return: physical EFI values, EFI channel numbers
         :rtype: tuple(EFI, EFI)
         :raises RuntimeError: if the exit code indicates any error
-
         """
         values = [Double(), Double(), Double(), Double()]
         channels = [Int(), Int(), Int(), Int()]
         self._call('GetMEFIValue', self.iid, *(values + channels))
         return (EFI(*[v.value for v in values]),
                 EFI(*[c.value for c in channels]))
-
-
