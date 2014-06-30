@@ -20,7 +20,7 @@ setup(
         'gui_scripts': [
             'online_control = hit.online_control.__main__:main'
         ],
-        'madgui.core.notebook.menu': [
+        'madgui.widget.notebook.menu': [
             'online_control = hit.online_control.madgui:Plugin'
         ]
     },
