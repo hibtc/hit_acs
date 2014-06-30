@@ -5,6 +5,7 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 from __future__ import absolute_import
 
 import re
+from collections import namedtuple
 
 from cern.cpymad.types import Expression
 
@@ -23,7 +24,7 @@ def is_identifier(name):
 
 
 def get_dvm_name(expr):
-    """Return DVM name for an element parameter or ``None``."""
+    """Return DVM name for an element parameter or raise ``ValueError``."""
     if not isinstance(expr, Expression):
         raise ValueError("Not an expression!")
     s = str(expr)
@@ -33,6 +34,32 @@ def get_dvm_name(expr):
         raise ValueError("Parameter not marked to be read from DVM.")
     # remove the prefix:
     return s[len(DVM_PREFIX):]
+
+
+class Param(object):
+
+    """Struct that holds information about DVM parameters."""
+
+    def __init__(self,
+                 elem_type,
+                 param_type,
+                 dvm_name,
+                 madx_name,
+                 madx_value):
+        """
+        Construct struct instance.
+
+        :elem_type: element type (e.g. 'quadrupole')
+        :param_type: parameter type (e.g. 'K1')
+        :dvm_name: parameter name as expected by DVM
+        :madx_name: knob name as defined in .madx file
+        :madx_value: knob value as retrieved from MAD-X
+        """
+        self.elem_type = elem_type
+        self.param_type = param_type
+        self.dvm_name = dvm_name
+        self.madx_name = madx_name
+        self.madx_value = madx_value
 
 
 class Plugin(object):
@@ -121,7 +148,11 @@ class Plugin(object):
         return self._frame.vars.get('control')
 
     def iter_dvm_params(self):
-        """Iterate over all DVM parameters in the current sequence."""
+        """
+        Iterate over all DVM parameters in the current sequence.
+
+        Yields instances of type :class:`Param`.
+        """
         for elem in self._control.elements:
             for param in elem:
                 knob = elem[param]
@@ -129,21 +160,25 @@ class Plugin(object):
                     dvm_name = get_dvm_name(knob)
                 except ValueError:
                     continue
-                yield dvm_name, knob.value
+                yield Param(elem_type=elem.type,
+                            param_type=param_name,
+                            dvm_name=dvm_name,
+                            madx_name=str(knob),
+                            madx_value=knob.value)
 
     def read_all(self):
         """Read all parameters from the online database."""
         control = self._control
         madx = control.madx
-        for dvm_name, _ in self.iter_dvm_params():
-            value = self.get_dvm_param(dvm_name)
-            madx.command(**{str(knob): value})
+        for param in self.iter_dvm_params():
+            value = self.get_dvm_param(param.dvm_name)
+            madx.command(**{str(param.madx_name): value})
         control.twiss()
 
     def write_all(self):
         """Write all parameters to the online database."""
-        for dvm_name, value in self.iter_dvm_params():
-            value = self.set_dvm_param(dvm_name, value)
+        for param in self.iter_dvm_params():
+            self.set_dvm_param(param.dvm_name, param.madx_value)
 
     def get_dvm_param(self, dvm_name):
         """Get a single parameter from the online database."""
