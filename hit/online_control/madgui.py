@@ -6,10 +6,14 @@ from __future__ import absolute_import
 
 import re
 from collections import namedtuple
+from pkg_resources import resource_string
+
+import yaml
 
 from cern.cpymad.types import Expression
 
 from madgui.core import wx
+from madgui.util import unit
 
 # TODO: make GetFloatValueSD useful by implementing ranges
 # TODO: catch exceptions and display error messages
@@ -62,6 +66,11 @@ class Param(object):
         self.madx_value = madx_value
 
 
+def load_config():
+    """Return the builtin configuration."""
+    return yaml.safe_load(resource_string(__package__, 'config.yml'))
+
+
 class Plugin(object):
 
     """
@@ -81,6 +90,9 @@ class Plugin(object):
         self._frame = frame
         self._BeamOptikDLL = BeamOptikDLL
         self._dvm = None
+        self._config = load_config()
+        units = unit.from_config_dict(self._config['units'])
+        self._utool = unit.UnitConverter(units, None)
         # if the .dll is not available, there should be no menuitem:
         if not BeamOptikDLL.lib:
             pass
@@ -170,21 +182,31 @@ class Plugin(object):
         """Read all parameters from the online database."""
         control = self._control
         madx = control.madx
-        for param in self.iter_dvm_params():
-            value = self.get_dvm_param(param.dvm_name)
-            madx.command(**{str(param.madx_name): value})
+        for par in self.iter_dvm_params():
+            value = self.get_dvm_param(par.param_type, par.dvm_name)
+            plain_value = madx.utool.strip_unit(par.param_type, value)
+            madx.command(**{str(par.madx_name): plain_value})
         control.twiss()
 
     def write_all(self):
         """Write all parameters to the online database."""
-        for param in self.iter_dvm_params():
-            self.set_dvm_param(param.dvm_name, param.madx_value)
+        for par in self.iter_dvm_params():
+            self.set_dvm_param(par.param_type, par.dvm_name, par.madx_value)
 
-    def get_dvm_param(self, dvm_name):
+    def get_plain_dvm_param(self, dvm_name):
         """Get a single parameter from the online database."""
         return self._dvm.GetFloatValue(dvm_name)
 
-    def set_dvm_param(self, dvm_name, value):
+    def set_plain_dvm_param(self, dvm_name, value):
         """Set a single parameter in the online database."""
         self._dvm.SetFloatValue(dvm_name, value)
 
+    def get_dvm_param(self, param_type, dvm_name):
+        """Get a single parameter from the online database with unit."""
+        plain_value = self.get_plain_dvm_param(dvm_name)
+        return self._utool.add_unit(param_type, value)
+
+    def set_dvm_param(self, param_type, dvm_name, value):
+        """Set a single parameter in the online database with unit."""
+        plain_value = self._utool.strip_unit(param_type, value)
+        self.set_plain_dvm_param(dvm_name, plain_value)
