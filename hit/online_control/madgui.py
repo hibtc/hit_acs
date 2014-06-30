@@ -183,7 +183,7 @@ class Plugin(object):
         control = self._control
         madx = control.madx
         for par in self.iter_dvm_params():
-            value = self.get_dvm_param(par.param_type, par.dvm_name)
+            value = self.get_value(par.param_type, par.dvm_name)
             plain_value = madx.utool.strip_unit(par.param_type, value)
             madx.command(**{str(par.madx_name): plain_value})
         control.twiss()
@@ -191,22 +191,22 @@ class Plugin(object):
     def write_all(self):
         """Write all parameters to the online database."""
         for par in self.iter_dvm_params():
-            self.set_dvm_param(par.param_type, par.dvm_name, par.madx_value)
+            self.set_value(par.param_type, par.dvm_name, par.madx_value)
 
-    def get_plain_dvm_param(self, dvm_name):
-        """Get a single parameter from the online database."""
+    def get_float_value(self, dvm_name):
+        """Get a single float value from the online database."""
         return self._dvm.GetFloatValue(dvm_name)
 
-    def set_plain_dvm_param(self, dvm_name, value):
-        """Set a single parameter in the online database."""
+    def set_float_value(self, dvm_name, value):
+        """Set a single float value in the online database."""
         self._dvm.SetFloatValue(dvm_name, value)
 
-    def get_dvm_param(self, param_type, dvm_name):
-        """Get a single parameter from the online database with unit."""
-        plain_value = self.get_plain_dvm_param(dvm_name)
+    def get_value(self, param_type, dvm_name):
+        """Get a single value from the online database with unit."""
+        plain_value = self.get_float_value(dvm_name)
         return self._utool.add_unit(param_type, value)
 
-    def set_dvm_param(self, param_type, dvm_name, value):
+    def set_value(self, param_type, dvm_name, value):
         """Set a single parameter in the online database with unit."""
         plain_value = self._utool.strip_unit(param_type, value)
-        self.set_plain_dvm_param(dvm_name, plain_value)
+        self.set_float_value(dvm_name, plain_value)
