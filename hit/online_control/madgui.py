@@ -68,7 +68,7 @@ class Param(object):
 
 def load_config():
     """Return the builtin configuration."""
-    return yaml.safe_load(resource_string(__package__, 'config.yml'))
+    return yaml.safe_load(resource_string('hit.online_control', 'config.yml'))
 
 
 class Plugin(object):
