@@ -15,6 +15,9 @@ from cern.cpymad.types import Expression
 from madgui.core import wx
 from madgui.util import unit
 
+from hit.online_control.beamoptikdll import BeamOptikDLL, ExecOptions
+
+
 # TODO: make GetFloatValueSD useful by implementing ranges
 # TODO: catch exceptions and display error messages
 
@@ -86,7 +89,6 @@ class Plugin(object):
         database. This works only if the corresponding parameters were named
         exactly as in the database and are assigned with the ":=" operator.
         """
-        from hit.online_control.beamoptikdll import BeamOptikDLL
         self._frame = frame
         self._BeamOptikDLL = BeamOptikDLL
         self._dvm = None
@@ -125,6 +127,10 @@ class Plugin(object):
         Append('&Write all',
                 'Write all parameters to the online database',
                 self.write_all,
+                self.has_sequence)
+        Append('&Execute changes',
+                'Apply parameter changes',
+                self.execute,
                 self.has_sequence)
 
     def is_connected(self):
@@ -210,3 +216,6 @@ class Plugin(object):
         """Set a single parameter in the online database with unit."""
         plain_value = self._utool.strip_unit(param_type, value)
         self.set_float_value(dvm_name, plain_value)
+
+    def execute(self, options=ExecOptions):
+        self._dvm.ExecuteChanges(options)
