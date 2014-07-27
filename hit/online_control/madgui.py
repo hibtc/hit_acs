@@ -11,6 +11,7 @@ from pkg_resources import resource_string
 import yaml
 
 from cern.cpymad.types import Expression
+from madgui.util.symbol import SymbolicValue
 
 from madgui.core import wx
 from madgui.util import unit
@@ -32,9 +33,12 @@ def is_identifier(name):
 
 def get_dvm_name(expr):
     """Return DVM name for an element parameter or raise ``ValueError``."""
-    if not isinstance(expr, Expression):
+    if isinstance(expr, SymbolicValue):
+        s = str(expr._expression)
+    elif isinstance(expr, Expression):
+        s = str(expr)
+    else:
         raise ValueError("Not an expression!")
-    s = str(expr)
     if not is_identifier(s):
         raise ValueError("Not an identifier!")
     if not s.startswith(DVM_PREFIX):
@@ -181,7 +185,7 @@ class Plugin(object):
                 yield Param(elem_type=elem.type,
                             param_type=param_name,
                             dvm_name=dvm_name,
-                            madx_name=str(knob),
+                            madx_name=knob._expression,
                             madx_value=knob.value)
 
     def read_all(self):
