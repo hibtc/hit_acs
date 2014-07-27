@@ -28,7 +28,7 @@ DVM_PREFIX = 'DVM_'
 
 def is_identifier(name):
     """Check if ``name`` is a valid identifier."""
-    return bool(re.match(r'^[a-z_]\w*$', s, re.IGNORECASE))
+    return bool(re.match(r'^[a-z_]\w*$', name, re.IGNORECASE))
 
 
 def get_dvm_name(expr):
@@ -147,7 +147,7 @@ class Plugin(object):
 
     def has_sequence(self):
         """Check if online control is connected and a sequence is loaded."""
-        return self.connected and self._control
+        return self.connected and bool(self._control)
 
     def connect(self):
         """Connect to online database."""
@@ -176,8 +176,8 @@ class Plugin(object):
         Yields instances of type :class:`Param`.
         """
         for elem in self._control.elements:
-            for param in elem:
-                knob = elem[param]
+            for param_name in elem:
+                knob = elem[param_name]
                 try:
                     dvm_name = get_dvm_name(knob)
                 except ValueError:
@@ -194,7 +194,7 @@ class Plugin(object):
         madx = control.madx
         for par in self.iter_dvm_params():
             value = self.get_value(par.param_type, par.dvm_name)
-            plain_value = madx.utool.strip_unit(par.param_type, value)
+            plain_value = control.utool.strip_unit(par.param_type, value)
             madx.command(**{str(par.madx_name): plain_value})
         control.twiss()
 
@@ -214,12 +214,12 @@ class Plugin(object):
     def get_value(self, param_type, dvm_name):
         """Get a single value from the online database with unit."""
         plain_value = self.get_float_value(dvm_name)
-        return self._utool.add_unit(param_type, value)
+        return self._utool.add_unit(param_type, plain_value)
 
     def set_value(self, param_type, dvm_name, value):
         """Set a single parameter in the online database with unit."""
         plain_value = self._utool.strip_unit(param_type, value)
         self.set_float_value(dvm_name, plain_value)
 
-    def execute(self, options=ExecOptions):
+    def execute(self, options=ExecOptions.CalcDif):
         self._dvm.ExecuteChanges(options)
