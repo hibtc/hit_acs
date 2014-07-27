@@ -8,3 +8,5 @@
 # Valid unit names are from ``unum.units``.
 units:
   k1:       {m: -2}
+  ks:       {m: -1}
+  angle:    rad
