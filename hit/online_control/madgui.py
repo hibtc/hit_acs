@@ -23,7 +23,7 @@ from hit.online_control.beamoptikdll import BeamOptikDLL, ExecOptions
 # TODO: catch exceptions and display error messages
 
 
-DVM_PREFIX = 'DVM_'
+DVM_PREFIX = 'dvm_'
 
 
 def is_identifier(name):
