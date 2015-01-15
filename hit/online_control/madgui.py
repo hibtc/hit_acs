@@ -280,5 +280,3 @@ class Plugin(object):
             if not element['type'].lower().endswith('monitor'):
                 continue
             yield element
-
-    def iter_sd_sets(self):
