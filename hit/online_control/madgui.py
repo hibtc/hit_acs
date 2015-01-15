@@ -136,6 +136,11 @@ class Plugin(object):
                 'Apply parameter changes',
                 self.execute,
                 self.has_sequence)
+        menu.AppendSeparator()
+        Append('Read &monitors',
+               'Read SD values (beam envelope/position) from monitors',
+               self.read_all_sd_values,
+               self.has_sequence)
 
     def is_connected(self):
         """Check if online control is connected."""
@@ -223,3 +228,55 @@ class Plugin(object):
 
     def execute(self, options=ExecOptions.CalcDif):
         self._dvm.ExecuteChanges(options)
+
+    def read_all_sd_values(self):
+        """Read out SD values (beam position/envelope)."""
+        segman = frame.GetActiveFigurePanel().view.segman
+        for elem in self.iter_sd_monitors():
+            sd_values = self.get_sd_values(elem['name'])
+            if not sd_values:
+                continue
+            twiss_initial = {}
+            ex = segman.beam['ex']
+            ey = segman.beam['ey']
+            if 'widthx' in sd_values:
+                twiss_initial['betx'] = sd_values['widthx'] ** 2 / ex
+            if 'widthy' in sd_values:
+                twiss_initial['bety'] = sd_values['widthy'] ** 2 / ey
+            if 'posx' in sd_values:
+                twiss_initial['x'] = sd_values['posx']
+            if 'posy' in sd_values:
+                twiss_initial['y'] = sd_values['posy']
+            segman.set_twiss_initial(
+                segman.get_element_info(element['name']),
+                self._utool.dict_add_unit(twiss_initial))
+
+    def get_sd_values(self, element_name):
+        """Read out one SD monitor."""
+        sd_values = {}
+        self._update_sd_value(sd_values, element_name, 'widthx')
+        self._update_sd_value(sd_values, element_name, 'widthy')
+        self._update_sd_value(sd_values, element_name, 'posx')
+        self._update_sd_value(sd_values, element_name, 'posy')
+        return sd_values
+
+    def _update_sd_value(self, cache, element_name, param_name):
+        """Read a single SD value into a dictionary."""
+        element_name = re.sub(':\d+$', '', element_name)
+        param_name = param_name
+        sd_name = param_name + '_' + element_name
+        try:
+            cache[param_name] = self._dvm.GetFloatValueSD(sd_name.upper())
+            return True
+        except RuntimeError:
+            return False
+
+    def iter_sd_monitors(self):
+        for elem in self._control.elements:
+            if not element['name'].lower().startswith('sd_'):
+                continue
+            if not element['type'].lower().endswith('monitor'):
+                continue
+            yield element
+
+    def iter_sd_sets(self):
