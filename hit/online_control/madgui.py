@@ -182,7 +182,7 @@ class Plugin(object):
                     dvm_name = get_dvm_name(knob)
                 except ValueError:
                     continue
-                yield Param(elem_type=elem.type,
+                yield Param(elem_type=elem['type'],
                             param_type=param_name,
                             dvm_name=dvm_name,
                             madx_name=knob._expression,
