@@ -124,16 +124,18 @@ class Plugin(object):
                 'Disconnect online control interface',
                 self.disconnect,
                 self.is_connected)
-        Append('&Read all',
-                'Read all parameters from the online database',
+        menu.AppendSeparator()
+        Append('&Read strengthes',
+                'Read magnet strengthes from the online database',
                 self.read_all,
                 self.has_sequence)
-        Append('&Write all',
-                'Write all parameters to the online database',
+        Append('&Write strengthes',
+                'Write magnet strengthes to the online database',
                 self.write_all,
                 self.has_sequence)
+        menu.AppendSeparator()
         Append('&Execute changes',
-                'Apply parameter changes',
+                'Apply parameter written changes to magnets',
                 self.execute,
                 self.has_sequence)
         menu.AppendSeparator()
