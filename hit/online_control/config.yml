@@ -1,0 +1,12 @@
+
+# Units for DVM parameters as expected by BeamOptikDLL.
+# The following two formats are accepted for units:
+#
+#   func-name: unit name
+#   func-name: dictionary of {unit name: power}
+#
+# Valid unit names are from ``unum.units``.
+units:
+  k1:       {m: -2}
+  ks:       {m: -1}
+  angle:    rad
