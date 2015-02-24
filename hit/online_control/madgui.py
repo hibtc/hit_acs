@@ -10,7 +10,7 @@ from pkg_resources import resource_string
 
 import yaml
 
-from cern.cpymad.types import Expression
+from cpymad.types import Expression
 from madgui.util.symbol import SymbolicValue
 
 from madgui.core import wx
@@ -98,7 +98,7 @@ class Plugin(object):
         self._dvm = None
         self._config = load_config()
         units = unit.from_config_dict(self._config['units'])
-        self._utool = unit.UnitConverter(units, None)
+        self._utool = unit.UnitConverter(units)
         # if the .dll is not available, there should be no menuitem:
         if not BeamOptikDLL.lib:
             pass
