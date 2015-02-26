@@ -159,11 +159,11 @@ class Plugin(object):
     def connect(self):
         """Connect to online database."""
         self._dvm = self._BeamOptikDLL.GetInterfaceInstance()
-        self._frame.vars['dvm'] = self._dvm
+        self._frame.env['dvm'] = self._dvm
 
     def disconnect(self):
         """Disconnect from online database."""
-        del self._frame.vars['dvm']
+        del self._frame.env['dvm']
         self._dvm.FreeInterfaceInstance()
 
     @property
@@ -174,7 +174,7 @@ class Plugin(object):
     @property
     def _control(self):
         """Return the online control (:class:`madgui.component.Model`)."""
-        return self._frame.vars.get('control')
+        return self._frame.env.get('control')
 
     def iter_dvm_params(self):
         """
