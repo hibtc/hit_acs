@@ -31,6 +31,13 @@ def is_identifier(name):
     return bool(re.match(r'^[a-z_]\w*$', name, re.IGNORECASE))
 
 
+def strip_prefix(name, prefix):
+    if name.startswith(prefix):
+        return name[len(prefix):]
+    else:
+        return name
+
+
 def get_dvm_name(expr):
     """Return DVM name for an element parameter or raise ``ValueError``."""
     if isinstance(expr, SymbolicValue):
@@ -255,32 +262,46 @@ class Plugin(object):
                 twiss_initial['x'] = sd_values['posx']
             if 'posy' in sd_values:
                 twiss_initial['y'] = sd_values['posy']
+            twiss_initial['mixin'] = True
             segman.set_twiss_initial(
-                segman.get_element_info(element['name']),
+                segman.get_element_info(elem['name']),
                 self._utool.dict_add_unit(twiss_initial))
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
-        sd_values = {}
-        self._update_sd_value(sd_values, element_name, 'widthx')
-        self._update_sd_value(sd_values, element_name, 'widthy')
-        self._update_sd_value(sd_values, element_name, 'posx')
-        self._update_sd_value(sd_values, element_name, 'posy')
-        return sd_values
+        try:
+            sd_values = {
+                'widthx': self._get_sd_value(element_name, 'widthx'),
+                'widthy': self._get_sd_value(element_name, 'widthy'),
+                'posx': self._get_sd_value(element_name, 'posx'),
+                'posy': self._get_sd_value(element_name, 'posy'),
+            }
+        except RuntimeError:
+            return {}
+        # The magic number -9999.0 is used to signal that the value cannot be
+        # used.
+        # TODO: sometimes width=0 is returned. Whatis the reason/meaning of
+        # this?
+        if sd_values['widthx'] <= 0 or sd_values['widthy'] <= 0:
+            return {}
+        mm = unit.units.mm
+        return {
+            'widthx': sd_values['widthx'] * mm,
+            'widthy': sd_values['widthy'] * mm,
+            'posx': sd_values['posx'] * mm,
+            'posy': sd_values['posy'] * mm,
+        }
 
-    def _update_sd_value(self, cache, element_name, param_name):
+    def _get_sd_value(self, element_name, param_name):
         """Read a single SD value into a dictionary."""
         element_name = re.sub(':\d+$', '', element_name)
+        element_name = strip_prefix(element_name, 'sd_')
         param_name = param_name
         sd_name = param_name + '_' + element_name
-        try:
-            cache[param_name] = self._dvm.GetFloatValueSD(sd_name.upper())
-            return True
-        except RuntimeError:
-            return False
+        return self._dvm.GetFloatValueSD(sd_name.upper())
 
     def iter_sd_monitors(self):
-        for elem in self._segman.elements:
+        for element in self._segman.elements:
             if not element['name'].lower().startswith('sd_'):
                 continue
             if not element['type'].lower().endswith('monitor'):
