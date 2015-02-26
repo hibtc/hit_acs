@@ -154,7 +154,7 @@ class Plugin(object):
 
     def has_sequence(self):
         """Check if online control is connected and a sequence is loaded."""
-        return self.connected and bool(self._control)
+        return self.connected and bool(self._segman)
 
     def connect(self):
         """Connect to online database."""
@@ -172,9 +172,12 @@ class Plugin(object):
         return bool(self._dvm)
 
     @property
-    def _control(self):
+    def _segman(self):
         """Return the online control (:class:`madgui.component.Model`)."""
-        return self._frame.env.get('control')
+        panel = self._frame.GetActiveFigurePanel()
+        if panel:
+            return panel.view.segman
+        return None
 
     def iter_dvm_params(self):
         """
@@ -182,7 +185,7 @@ class Plugin(object):
 
         Yields instances of type :class:`Param`.
         """
-        for elem in self._control.elements:
+        for elem in self._segman.elements:
             for param_name in elem:
                 knob = elem[param_name]
                 try:
@@ -197,13 +200,16 @@ class Plugin(object):
 
     def read_all(self):
         """Read all parameters from the online database."""
-        control = self._control
-        madx = control.madx
+        segman = self._segman
+        madx = segman.simulator.madx
         for par in self.iter_dvm_params():
             value = self.get_value(par.param_type, par.dvm_name)
-            plain_value = control.utool.strip_unit(par.param_type, value)
+            plain_value = segman.simulator.utool.strip_unit(par.param_type, value)
             madx.command(**{str(par.madx_name): plain_value})
-        control.twiss()
+        # TODO: update only changed segments?:
+        # TODO: segment ordering
+        for segment in segman.segments.values():
+            segment.twiss()
 
     def write_all(self):
         """Write all parameters to the online database."""
@@ -233,7 +239,7 @@ class Plugin(object):
 
     def read_all_sd_values(self):
         """Read out SD values (beam position/envelope)."""
-        segman = frame.GetActiveFigurePanel().view.segman
+        segman = self._segman
         for elem in self.iter_sd_monitors():
             sd_values = self.get_sd_values(elem['name'])
             if not sd_values:
@@ -274,7 +280,7 @@ class Plugin(object):
             return False
 
     def iter_sd_monitors(self):
-        for elem in self._control.elements:
+        for elem in self._segman.elements:
             if not element['name'].lower().startswith('sd_'):
                 continue
             if not element['type'].lower().endswith('monitor'):
