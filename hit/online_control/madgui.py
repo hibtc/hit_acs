@@ -165,7 +165,8 @@ class Plugin(object):
 
     def connect(self):
         """Connect to online database."""
-        self._dvm = self._BeamOptikDLL.GetInterfaceInstance()
+        self._dvm = self._BeamOptikDLL.load_library()
+        self._dvm.GetInterfaceInstance()
         self._frame.env['dvm'] = self._dvm
 
     def disconnect(self):
