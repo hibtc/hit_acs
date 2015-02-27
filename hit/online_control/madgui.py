@@ -10,7 +10,7 @@ from pkg_resources import resource_string
 
 import yaml
 
-from cern.cpymad.types import Expression
+from cpymad.types import Expression
 from madgui.util.symbol import SymbolicValue
 
 from madgui.core import wx
@@ -29,6 +29,13 @@ DVM_PREFIX = 'dvm_'
 def is_identifier(name):
     """Check if ``name`` is a valid identifier."""
     return bool(re.match(r'^[a-z_]\w*$', name, re.IGNORECASE))
+
+
+def strip_prefix(name, prefix):
+    if name.startswith(prefix):
+        return name[len(prefix):]
+    else:
+        return name
 
 
 def get_dvm_name(expr):
@@ -98,7 +105,7 @@ class Plugin(object):
         self._dvm = None
         self._config = load_config()
         units = unit.from_config_dict(self._config['units'])
-        self._utool = unit.UnitConverter(units, None)
+        self._utool = unit.UnitConverter(units)
         # if the .dll is not available, there should be no menuitem:
         if not BeamOptikDLL.lib:
             pass
@@ -154,16 +161,16 @@ class Plugin(object):
 
     def has_sequence(self):
         """Check if online control is connected and a sequence is loaded."""
-        return self.connected and bool(self._control)
+        return self.connected and bool(self._segman)
 
     def connect(self):
         """Connect to online database."""
         self._dvm = self._BeamOptikDLL.GetInterfaceInstance()
-        self._frame.vars['dvm'] = self._dvm
+        self._frame.env['dvm'] = self._dvm
 
     def disconnect(self):
         """Disconnect from online database."""
-        del self._frame.vars['dvm']
+        del self._frame.env['dvm']
         self._dvm.FreeInterfaceInstance()
 
     @property
@@ -172,9 +179,12 @@ class Plugin(object):
         return bool(self._dvm)
 
     @property
-    def _control(self):
+    def _segman(self):
         """Return the online control (:class:`madgui.component.Model`)."""
-        return self._frame.vars.get('control')
+        panel = self._frame.GetActiveFigurePanel()
+        if panel:
+            return panel.view.segman
+        return None
 
     def iter_dvm_params(self):
         """
@@ -182,7 +192,7 @@ class Plugin(object):
 
         Yields instances of type :class:`Param`.
         """
-        for elem in self._control.elements:
+        for elem in self._segman.elements:
             for param_name in elem:
                 knob = elem[param_name]
                 try:
@@ -197,13 +207,16 @@ class Plugin(object):
 
     def read_all(self):
         """Read all parameters from the online database."""
-        control = self._control
-        madx = control.madx
+        segman = self._segman
+        madx = segman.simulator.madx
         for par in self.iter_dvm_params():
             value = self.get_value(par.param_type, par.dvm_name)
-            plain_value = control.utool.strip_unit(par.param_type, value)
+            plain_value = segman.simulator.utool.strip_unit(par.param_type, value)
             madx.command(**{str(par.madx_name): plain_value})
-        control.twiss()
+        # TODO: update only changed segments?:
+        # TODO: segment ordering
+        for segment in segman.segments.values():
+            segment.twiss()
 
     def write_all(self):
         """Write all parameters to the online database."""
@@ -233,7 +246,7 @@ class Plugin(object):
 
     def read_all_sd_values(self):
         """Read out SD values (beam position/envelope)."""
-        segman = frame.GetActiveFigurePanel().view.segman
+        segman = self._segman
         for elem in self.iter_sd_monitors():
             sd_values = self.get_sd_values(elem['name'])
             if not sd_values:
@@ -249,36 +262,48 @@ class Plugin(object):
                 twiss_initial['x'] = sd_values['posx']
             if 'posy' in sd_values:
                 twiss_initial['y'] = sd_values['posy']
+            twiss_initial['mixin'] = True
             segman.set_twiss_initial(
-                segman.get_element_info(element['name']),
+                segman.get_element_info(elem['name']),
                 self._utool.dict_add_unit(twiss_initial))
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
-        sd_values = {}
-        self._update_sd_value(sd_values, element_name, 'widthx')
-        self._update_sd_value(sd_values, element_name, 'widthy')
-        self._update_sd_value(sd_values, element_name, 'posx')
-        self._update_sd_value(sd_values, element_name, 'posy')
-        return sd_values
+        try:
+            sd_values = {
+                'widthx': self._get_sd_value(element_name, 'widthx'),
+                'widthy': self._get_sd_value(element_name, 'widthy'),
+                'posx': self._get_sd_value(element_name, 'posx'),
+                'posy': self._get_sd_value(element_name, 'posy'),
+            }
+        except RuntimeError:
+            return {}
+        # The magic number -9999.0 is used to signal that the value cannot be
+        # used.
+        # TODO: sometimes width=0 is returned. Whatis the reason/meaning of
+        # this?
+        if sd_values['widthx'] <= 0 or sd_values['widthy'] <= 0:
+            return {}
+        mm = unit.units.mm
+        return {
+            'widthx': sd_values['widthx'] * mm,
+            'widthy': sd_values['widthy'] * mm,
+            'posx': sd_values['posx'] * mm,
+            'posy': sd_values['posy'] * mm,
+        }
 
-    def _update_sd_value(self, cache, element_name, param_name):
+    def _get_sd_value(self, element_name, param_name):
         """Read a single SD value into a dictionary."""
         element_name = re.sub(':\d+$', '', element_name)
+        element_name = strip_prefix(element_name, 'sd_')
         param_name = param_name
         sd_name = param_name + '_' + element_name
-        try:
-            cache[param_name] = self._dvm.GetFloatValueSD(sd_name.upper())
-            return True
-        except RuntimeError:
-            return False
+        return self._dvm.GetFloatValueSD(sd_name.upper())
 
     def iter_sd_monitors(self):
-        for elem in self._control.elements:
+        for element in self._segman.elements:
             if not element['name'].lower().startswith('sd_'):
                 continue
             if not element['type'].lower().endswith('monitor'):
                 continue
             yield element
-
-    def iter_sd_sets(self):
