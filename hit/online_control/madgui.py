@@ -100,16 +100,13 @@ class Plugin(object):
         database. This works only if the corresponding parameters were named
         exactly as in the database and are assigned with the ":=" operator.
         """
+        # TODO: don't show menuitem if the .dll is not available?
         self._frame = frame
         self._BeamOptikDLL = BeamOptikDLL
         self._dvm = None
         self._config = load_config()
         units = unit.from_config_dict(self._config['units'])
         self._utool = unit.UnitConverter(units)
-        # if the .dll is not available, there should be no menuitem:
-        if not BeamOptikDLL.lib:
-            pass
-            #return # JUST FOR TESTING!
         # Create menu
         menu = wx.Menu()
         menubar.Append(menu, '&Online control')
@@ -165,7 +162,8 @@ class Plugin(object):
 
     def connect(self):
         """Connect to online database."""
-        self._dvm = self._BeamOptikDLL.GetInterfaceInstance()
+        self._dvm = self._BeamOptikDLL.load_library()
+        self._dvm.GetInterfaceInstance()
         self._frame.env['dvm'] = self._dvm
 
     def disconnect(self):

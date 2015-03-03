@@ -14,23 +14,40 @@ import logging
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
 
 
-def enum(*sequential):
+class _EnumBase(int):
+
+    """Abstract base type for enums (missed :cvar:`_value_names`)."""
+
+    def __repr__(self):
+        return '<{}.{}: {}>'.format(
+            self.__class__.__name__,
+            self._value_names[int(self)],
+            int(self),
+        )
+
+
+def make_enum(name, value_names):
     """Create a simple enum type (like in C++)."""
-    class Enum(int):
-        """Enum type."""
-        def __str__(self):
-            return sequential[int(self)]
-        def __repr__(self):
-            return '%s(%s=%d)' % (self.__class__.__name__, self, int(self))
-    for i,v in enumerate(sequential):
-        setattr(Enum, v, i)
+    Enum = type(name, (_EnumBase,), {
+        '_value_names': value_names,
+    })
+    for i, v in enumerate(value_names):
+        setattr(Enum, v, Enum(i))
     return Enum
 
 
-DVMStatus = enum('Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error')
-GetOptions = enum('Current', 'Saved')
-ExecOptions = enum('CalcAll', 'CalcDif', 'SimplyStore')
-GetSDOptions = enum('Current', 'Database', 'Test')
+DVMStatus = make_enum('DVMStatus', [
+    'Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error'
+])
+GetOptions = make_enum('GetOptions', [
+    'Current', 'Saved'
+])
+ExecOptions = make_enum('ExecOptions', [
+    'CalcAll', 'CalcDif', 'SimplyStore'
+])
+GetSDOptions = make_enum('GetSDOptions', [
+    'Current', 'Database', 'Test'
+])
 
 
 class BeamOptikDLL(object):
@@ -40,16 +57,12 @@ class BeamOptikDLL(object):
 
     It abstracts the ctypes data types and automates InterfaceId as well as
     iDone. Nothing else.
-    """
 
-    try:
-        # NOTE: this loads the DLL at import time, which (I believe) is
-        # reasonable. An ImportError will be raised if the DLL can't be
-        # loaded:
-        lib = ctypes.windll.LoadLibrary('BeamOptikDLL.dll')
-    except AttributeError:
-        # On linux (for testing)
-        lib = None
+    Instanciation is a two-step process as follows:
+
+    >>> obj = BeamOptikDLL.load_library()
+    >>> obj.GetInterfaceInstance()
+    """
 
     #----------------------------------------
     # internal methods
@@ -82,8 +95,7 @@ class BeamOptikDLL(object):
         elif done != 0:
             raise ValueError("Unknown error: %i" % done)
 
-    @classmethod
-    def _call(cls, function, *params):
+    def _call(self, function, *params):
         """
         Call the specified DLL function.
 
@@ -101,48 +113,68 @@ class BeamOptikDLL(object):
             params.append(done)
         def param(p):
             return p if isinstance(p, Str) else ctypes.byref(p)
-        getattr(cls.lib, function)(*map(param, params))
-        cls.check_return(done.value)
+        func = getattr(self.lib, function)
+        args = map(param, params)
+        func(*args)
+        self.check_return(done.value)
 
     #----------------------------------------
-    # class level API
+    # things that don't require IID to be set:
     #----------------------------------------
 
     @classmethod
-    def DisableMessageBoxes(cls):
+    def load_library(cls, filename='BeamOptikDLL.dll'):
+        """
+        Search for the DLL in PATH and return a BeamOptikDLL wrapper object.
+        """
+        try:
+            return cls(ctypes.windll.LoadLibrary(filename))
+        except AttributeError:
+            raise OSError
+
+    def DisableMessageBoxes(self):
         """
         Prevent creation of certain message boxes.
 
         :raises RuntimeError: if the exit code indicates any error
         """
-        cls._call('DisableMessageBoxes')
+        self._call('DisableMessageBoxes')
 
-    @classmethod
-    def GetInterfaceInstance(cls):
+    def GetInterfaceInstance(self):
         """
-        Create a BeamOptikDLL instance (connects DB and initialize DLL).
+        Initialize a BeamOptikDLL instance (connects DB and initialize DLL).
 
         :return: new instance id
         :rtype: int
         :raises RuntimeError: if the exit code indicates any error
         """
+        if self._iid is not None:
+            raise RuntimeError("GetInterfaceInstance cannot be called twice.")
         iid = Int()
-        cls._call('GetInterfaceInstance', iid)
-        return cls(iid)
+        self._call('GetInterfaceInstance', iid)
+        self._iid = iid
+        return iid
+
+    @property
+    def lib(self):
+        """Shared library proxy."""
+        return self._lib
 
     #----------------------------------------
     # object API
     #----------------------------------------
 
-    def __init__(self, iid):
+    def __init__(self, lib):
         """
-        The constructur should not be invoked directly (except for testing).
+        Initialize member variables.
 
-        Rather use the BeamOptikDLL.GetInterfaceInstance() classmethod.
+        Usually, you want to use :classmethod:`load_library` to create
+        instances instead of directly invoking this constructor.
 
-        :param ctypes.Int iid: InterfaceId
+        :param lib: shared library proxy object
         """
-        self._iid = iid
+        self._lib = lib
+        self._iid = None
         self._selected_vacc = None
         self._selected_efi = EFI(None, None, None, None)
         self._logger = logging.getLogger(__name__)
@@ -150,7 +182,15 @@ class BeamOptikDLL(object):
     @property
     def iid(self):
         """Interface instance ID."""
+        if self._iid is None:
+            raise RuntimeError("GetInterfaceInstance must be called before using other methods.")
         return self._iid
+
+    def __bool__(self):
+        """Check if the object belongs to an initialized interface instance."""
+        return self._iid is not None
+
+    __nonzero__ = __bool__
 
     def FreeInterfaceInstance(self):
         """
@@ -304,7 +344,7 @@ class BeamOptikDLL(object):
                    Int(vaccnum), Int(energy), Int(focus), Int(intensity),
                    order_num)
         sel_efi = self._selected_efi
-        if (vaccnum != self._selected_vacc or 
+        if (vaccnum != self._selected_vacc or
             energy != sel_efi.energy or
             focus != sel_efi.focus or
             intensity != sel_efi.intensity):
