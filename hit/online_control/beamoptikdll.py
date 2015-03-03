@@ -14,23 +14,40 @@ import logging
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
 
 
-def enum(*sequential):
+class _EnumBase(int):
+
+    """Abstract base type for enums (missed :cvar:`_value_names`)."""
+
+    def __repr__(self):
+        return '<{}.{}: {}>'.format(
+            self.__class__.__name__,
+            self._value_names[int(self)],
+            int(self),
+        )
+
+
+def make_enum(name, value_names):
     """Create a simple enum type (like in C++)."""
-    class Enum(int):
-        """Enum type."""
-        def __str__(self):
-            return sequential[int(self)]
-        def __repr__(self):
-            return '%s(%s=%d)' % (self.__class__.__name__, self, int(self))
-    for i,v in enumerate(sequential):
-        setattr(Enum, v, i)
+    Enum = type(name, (_EnumBase,), {
+        '_value_names': value_names,
+    })
+    for i, v in enumerate(value_names):
+        setattr(Enum, v, Enum(i))
     return Enum
 
 
-DVMStatus = enum('Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error')
-GetOptions = enum('Current', 'Saved')
-ExecOptions = enum('CalcAll', 'CalcDif', 'SimplyStore')
-GetSDOptions = enum('Current', 'Database', 'Test')
+DVMStatus = make_enum('DVMStatus', [
+    'Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error'
+])
+GetOptions = make_enum('GetOptions', [
+    'Current', 'Saved'
+])
+ExecOptions = make_enum('ExecOptions', [
+    'CalcAll', 'CalcDif', 'SimplyStore'
+])
+GetSDOptions = make_enum('GetSDOptions', [
+    'Current', 'Database', 'Test'
+])
 
 
 class BeamOptikDLL(object):
