@@ -163,7 +163,7 @@ class BeamOptikDLL(object):
     @property
     def iid(self):
         """Interface instance ID."""
-        if not self._iid:
+        if self._iid is None:
             raise RuntimeError("GetInterfaceInstance must be called before using other methods.")
         return self._iid
 
