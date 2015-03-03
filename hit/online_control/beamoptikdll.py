@@ -167,6 +167,12 @@ class BeamOptikDLL(object):
             raise RuntimeError("GetInterfaceInstance must be called before using other methods.")
         return self._iid
 
+    def __bool__(self):
+        """Check if the object belongs to an initialized interface instance."""
+        return self._iid is not None
+
+    __nonzero__ = __bool__
+
     def FreeInterfaceInstance(self):
         """
         Free resources.
