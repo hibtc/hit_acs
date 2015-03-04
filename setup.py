@@ -39,8 +39,8 @@ def main():
             'gui_scripts': [
                 'online_control = hit.online_control.__main__:main'
             ],
-            'madgui.widget.notebook.menu': [
-                'online_control = hit.online_control.madgui:Plugin'
+            'madgui.entry_points': [
+                'online_control = hit.online_control:entry_points'
             ]
         },
     )

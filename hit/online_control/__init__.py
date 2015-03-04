@@ -28,3 +28,9 @@ __classifiers__ = [
     'Topic :: Scientific/Engineering :: Medical Science Apps.',
     'Topic :: Scientific/Engineering :: Physics',
 ]
+
+
+entry_points = """
+    [madgui.widget.notebook.menu]
+    online_control = hit.online_control.madgui:Plugin
+"""
