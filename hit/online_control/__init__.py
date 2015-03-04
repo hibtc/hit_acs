@@ -6,16 +6,19 @@ for managing the interaction between model and online control.
 
 Finally, `OnlineElements` is used for dictionary-like access of online
 element parameters.
-
 """
+
 from collections import MutableMapping
 
 from .beamoptikdll import BeamOptikDLL
 
+
 class OnlineElements(MutableMapping):
+
     """
     Utility for accessing optics parameters online.
     """
+
     def __init__(self, library):
         """Initialize instance."""
         self.lib = library
@@ -28,7 +31,6 @@ class OnlineElements(MutableMapping):
         :return: parameter value
         :rtype: float
         :raises RuntimeError: if the exit code indicates any error
-
         """
         return self.lib.GetFloatValue(name)
 
@@ -39,7 +41,6 @@ class OnlineElements(MutableMapping):
         :param str name: parameter name
         :param float value: new parameter value
         :raises RuntimeError: if the exit code indicates any error
-
         """
         self.lib.SetFloatValue(name, value)
 
@@ -69,19 +70,21 @@ class OnlineElements(MutableMapping):
     def __delitem__(self, name):
         """Invalid operation!"""
         raise RuntimeError("Go downstairs and remove it yourself!")
+
     pop          = __delitem__
     popitem      = __delitem__
 
 
 class OnlineControl(object):
+
     """
     Beam-optic control component.
 
     This component encapsulates the interface to the online functionality of
     madgui. Specifically at this point it talks to the shared library
     'BeamOptikDLL.dll'.
-
     """
+
     lib = None
 
     def __init__(self, model, lib=None):
@@ -95,7 +98,6 @@ class OnlineControl(object):
 
         If the library is not found an OSError is raised. On linux an
         AttributeError is raised.
-
         """
         return cls(model, BeamOptikDLL.GetInterfaceInstance())
 
@@ -124,7 +126,6 @@ class OnlineControl(object):
 
         Return value is the library object. This can be used to perform
         further cleanup tasks.
-
         """
         if self.lib:
             self.lib, lib = None, self.lib
@@ -148,4 +149,3 @@ class OnlineControl(object):
     def update_online(self):
         """Update all online parameters from the model values."""
         pass
-
