@@ -54,30 +54,13 @@ def get_dvm_name(expr):
     return s[len(DVM_PREFIX):]
 
 
-class Param(object):
-
-    """Struct that holds information about DVM parameters."""
-
-    def __init__(self,
-                 elem_type,
-                 param_type,
-                 dvm_name,
-                 madx_name,
-                 madx_value):
-        """
-        Construct struct instance.
-
-        :elem_type: element type (e.g. 'quadrupole')
-        :param_type: parameter type (e.g. 'K1')
-        :dvm_name: parameter name as expected by DVM
-        :madx_name: knob name as defined in .madx file
-        :madx_value: knob value as retrieved from MAD-X
-        """
-        self.elem_type = elem_type
-        self.param_type = param_type
-        self.dvm_name = dvm_name
-        self.madx_name = madx_name
-        self.madx_value = madx_value
+Param = namedtuple('Param', [
+    'elem_type',    # element type (e.g. 'quadrupole')
+    'param_type',   # parameter type (e.g. 'K1')
+    'dvm_name',     # parameter name as expected by DVM
+    'madx_name',    # knob name as defined in .madx file
+    'madx_value',   # knob value as retrieved from MAD-X
+])
 
 
 def load_config():
