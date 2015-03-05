@@ -12,14 +12,13 @@ import yaml
 
 from cpymad.types import Expression
 from madgui.util.symbol import SymbolicValue
-
 from madgui.core import wx
 from madgui.util import unit
 
-from hit.online_control.beamoptikdll import BeamOptikDLL, ExecOptions
+from .beamoptikdll import BeamOptikDLL, ExecOptions
+from .dvm_parameters import DVM_ParameterList
 
 
-# TODO: make GetFloatValueSD useful by implementing ranges
 # TODO: catch exceptions and display error messages
 
 
@@ -32,6 +31,7 @@ def is_identifier(name):
 
 
 def strip_prefix(name, prefix):
+    """Strip a specified prefix substring from a string."""
     if name.startswith(prefix):
         return name[len(prefix):]
     else:
@@ -261,7 +261,7 @@ class Plugin(object):
             return {}
         # The magic number -9999.0 is used to signal that the value cannot be
         # used.
-        # TODO: sometimes width=0 is returned. Whatis the reason/meaning of
+        # TODO: sometimes width=0 is returned. What is the reason/meaning of
         # this?
         if sd_values['widthx'] <= 0 or sd_values['widthy'] <= 0:
             return {}
