@@ -4,13 +4,13 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 
 from __future__ import absolute_import
 
-import re
 from collections import namedtuple
 from pkg_resources import resource_string
 
 import yaml
 
 from cpymad.types import Expression
+from cpymad.util import strip_element_suffix, is_identifier
 from madgui.util.symbol import SymbolicValue
 from madgui.core import wx
 from madgui.util import unit
@@ -23,11 +23,6 @@ from .dvm_parameters import DVM_ParameterList
 
 
 DVM_PREFIX = 'dvm_'
-
-
-def is_identifier(name):
-    """Check if ``name`` is a valid identifier."""
-    return bool(re.match(r'^[a-z_]\w*$', name, re.IGNORECASE))
 
 
 def strip_prefix(name, prefix):
@@ -275,7 +270,7 @@ class Plugin(object):
 
     def _get_sd_value(self, element_name, param_name):
         """Read a single SD value into a dictionary."""
-        element_name = re.sub(':\d+$', '', element_name)
+        element_name = strip_element_suffix(element_name)
         element_name = strip_prefix(element_name, 'sd_')
         param_name = param_name
         sd_name = param_name + '_' + element_name
