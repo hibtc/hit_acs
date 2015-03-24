@@ -149,8 +149,9 @@ class ParamImporter:
             mad_symb = 'k1'
             dvm_symb = 'kL'
 
-            # TODO: these methods should be stable on edge cases, e.g. when
-            # 'lrad' needs to be used instead of 'l':
+            # TODO: make these methods should be stable on edge cases, e.g.
+            # when 'lrad' needs to be used instead of 'l':
+            # TODO: read and write use different parameters, but which...?
 
             def madx2dvm(self, value):
                 return value * self.mad_elem['l']
