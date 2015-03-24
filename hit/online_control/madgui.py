@@ -201,6 +201,12 @@ class Plugin(object):
         # TODO: cache and reuse 'active' flag for each parameter
         rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
                 for param in self.iter_readable_dvm_params()]
+        if not rows:
+            wx.MessageBox('There are no readable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
+                          'No readable parameters available',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+            return
         dlg = SyncParamDialog(self._frame,
                               'Import parameters from DVM',
                               data=rows)
@@ -230,6 +236,12 @@ class Plugin(object):
 
         rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
                 for param in self.iter_writable_dvm_params()]
+        if not rows:
+            wx.MessageBox('There are no writable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
+                          'No writable parameters available',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+            return
         dlg = SyncParamDialog(self._frame,
                               'Set values in DVM from current sequence',
                               data=rows)
