@@ -167,6 +167,7 @@ class Plugin(object):
     """
 
     _BeamOptikDLL = BeamOptikDLL
+    _testing = False
 
     def __init__(self, frame, menubar):
         """
@@ -244,7 +245,16 @@ class Plugin(object):
 
     def connect(self):
         """Connect to online database."""
-        self._dvm = self._BeamOptikDLL.load_library()
+        try:
+            self._dvm = self._BeamOptikDLL.load_library()
+        except OSError:
+            # TODO: Loading the stub should be controlled via a MadGUI command
+            # line option, and not be specific to linux.
+            from . import stub
+            logger = self._frame.getLogger('hit.online_control.stub')
+            proxy = stub.BeamOptikDllProxy({}, logger)
+            self._dvm = self._BeamOptikDLL(proxy)
+            self._testing = True
         self._dvm.GetInterfaceInstance()
         self._frame.env['dvm'] = self._dvm
 
@@ -420,3 +430,24 @@ class Plugin(object):
                           'UnicodeDecodeError',
                           wx.ICON_ERROR|wx.OK,
                           parent=self._frame)
+
+        # TODO: this code should really be put in a separate function, to
+        # have an API that enables reloading the DVM parameters:
+        if self._testing:
+            # for testing:
+            from . import stub
+            logger = self._frame.getLogger('hit.online_control.stub')
+
+            merged_params = dicti()
+            for group in self._dvm_params.values():
+                for param in group:
+                    if (param.read or param.write) and param.example is not None:
+                        if param.ui_conv:
+                            value = param.example / param.ui_conv
+                        else:
+                            value = param.example
+                        merged_params[param.name] = value
+
+            self._dvm._lib.data = {
+                'control': merged_params,
+            }
