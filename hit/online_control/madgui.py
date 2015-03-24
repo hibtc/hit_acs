@@ -227,7 +227,22 @@ class Plugin(object):
 
     def write_all(self):
         """Write all parameters to the online database."""
-        for par in self.iter_dvm_params():
+
+        rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
+                for param in self.iter_writable_dvm_params()]
+        dlg = SyncParamDialog(self._frame,
+                              'Set values in DVM from current sequence',
+                              data=rows)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.write_these(par for par, _ in dlg.selected)
+
+    def write_these(self, params):
+        """
+        Set parameter values in DVM from a list of parameters.
+
+        :param list params: List of ParamConverterBase
+        """
+        for par in params:
             self.set_value(par.param_type, par.dvm_name, par.madx_value)
 
     def get_float_value(self, dvm_name):
