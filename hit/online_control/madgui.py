@@ -18,6 +18,7 @@ from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
 from .dialogs import SyncParamDialog
+from .stub import BeamOptikDllProxy
 
 
 # TODO: catch exceptions and display error messages
@@ -71,7 +72,11 @@ class Plugin(object):
         return menu.Menu('&Online control', [
             Item('&Connect',
                  'Connect online control interface',
-                 self.connect,
+                 self.load_and_connect,
+                 self.is_disconnected),
+            Item('Connect &test stub',
+                 'Connect a stub version (for offline testing)',
+                 self.load_and_connect_stub,
                  self.is_disconnected),
             Item('&Disconnect',
                  'Disconnect online control interface',
@@ -115,18 +120,24 @@ class Plugin(object):
         """Check if online control is connected and a sequence is loaded."""
         return self.connected and bool(self._segman)
 
-    def connect(self):
+    def load_and_connect(self):
         """Connect to online database."""
         try:
             self._dvm = self._BeamOptikDLL.load_library()
         except OSError:
-            # TODO: Loading the stub should be controlled via a MadGUI command
-            # line option, and not be specific to linux.
-            from . import stub
-            logger = self._frame.getLogger('hit.online_control.stub')
-            proxy = stub.BeamOptikDllProxy({}, logger)
-            self._dvm = self._BeamOptikDLL(proxy)
-            self._testing = True
+            return
+        self._connect()
+
+    def load_and_connect_stub(self):
+        """Connect a stub BeamOptikDLL (for offline testing)."""
+        logger = self._frame.getLogger('hit.online_control.stub')
+        proxy = BeamOptikDllProxy({}, logger)
+        self._dvm = self._BeamOptikDLL(proxy)
+        self._testing = True
+        self._connect()
+
+    def _connect(self):
+        """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
         self._frame.env['dvm'] = self._dvm
 
