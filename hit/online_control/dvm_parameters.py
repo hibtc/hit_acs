@@ -21,6 +21,8 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
     'write',
     'unit',
     'ui_unit',
+    'ui_conv',
+    'example',
 ])
 
 
@@ -117,8 +119,8 @@ class DVM_ParameterList(object):
         '',                 # Präzision (Anz. Nachkomma im GUI)
         'unit',             # Einheit Parameter
         'ui_unit',          # Einheit Anzeige im GUI
-        '',                 # Umrechnungsfaktor Einheit--> Einheit GUI
-        '',                 # Beispielwert für Test in Einheit GUI
+        'ui_conv',          # Umrechnungsfaktor Einheit--> Einheit GUI
+        'example',          # Beispielwert für Test in Einheit GUI
         '',                 # Referenz auf DCU /MDE
         '',                 # (nicht verwendet)
         '',                 # Zugriffscode / editierbarkeit
@@ -141,6 +143,8 @@ class DVM_ParameterList(object):
         'write': CsvBool,
         'unit': CsvUnit,
         'ui_unit': CsvUnit,
+        'ui_conv': CsvFloat,
+        'example': CsvFloat,
     }
 
     # inverse map of _csv_columns[i] (used columns)
