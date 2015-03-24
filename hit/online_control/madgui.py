@@ -32,6 +32,31 @@ def load_config():
     return load_yaml_resource('hit.online_control', 'config.yml')
 
 
+class MenuCreator(object):
+
+    """Minor convenience utility for creating wx.Menu's."""
+
+    def __init__(self, handler):
+        """Create a wx.Menu. Menu events will be handled in handler."""
+        self.handler = handler
+        self.menu = wx.Menu()
+
+    def Item(self, label, help, action, condition):
+        """Append menu item."""
+        item = self.menu.Append(wx.ID_ANY, label, help)
+        def on_click(event):
+            if condition():
+                action()
+        def on_update(event):
+            event.Enable(condition())
+        self.handler.Bind(wx.EVT_MENU, on_click, item)
+        self.handler.Bind(wx.EVT_UPDATE_UI, on_update, item)
+
+    def Separator(self):
+        """Append separator."""
+        self.menu.AppendSeparator()
+
+
 class Plugin(object):
 
     """
@@ -60,51 +85,42 @@ class Plugin(object):
         menu = self.create_menu(frame)
         menubar.Append(menu, '&Online control')
 
-    def create_menu(self, frame):
+    def create_menu(self, handler):
         """Create menu."""
-        menu = wx.Menu()
-        def Append(label, help, action, condition):
-            item = menu.Append(wx.ID_ANY, label, help)
-            def on_click(event):
-                if condition():
-                    action()
-            def on_update(event):
-                event.Enable(condition())
-            frame.Bind(wx.EVT_MENU, on_click, item)
-            frame.Bind(wx.EVT_UPDATE_UI, on_update, item)
-        Append('&Connect',
+        m = MenuCreator(handler)
+        m.Item('&Connect',
                 'Connect online control interface',
                 self.connect,
                 self.is_disconnected)
-        Append('&Disconnect',
+        m.Item('&Disconnect',
                 'Disconnect online control interface',
                 self.disconnect,
                 self.is_connected)
-        menu.AppendSeparator()
-        Append('&Read strengthes',
+        m.Separator()
+        m.Item('&Read strengthes',
                 'Read magnet strengthes from the online database',
                 self.read_all,
                 self.has_sequence)
-        Append('&Write strengthes',
+        m.Item('&Write strengthes',
                 'Write magnet strengthes to the online database',
                 self.write_all,
                 self.has_sequence)
-        menu.AppendSeparator()
-        Append('&Execute changes',
+        m.Separator()
+        m.Item('&Execute changes',
                 'Apply parameter written changes to magnets',
                 self.execute,
                 self.has_sequence)
-        menu.AppendSeparator()
-        Append('Read &monitors',
+        m.Separator()
+        m.Item('Read &monitors',
                'Read SD values (beam envelope/position) from monitors',
                self.read_all_sd_values,
                self.has_sequence)
-        menu.AppendSeparator()
-        Append('&Load DVM parameter list',
+        m.Separator()
+        m.Item('&Load DVM parameter list',
                'Load list of DVM parameters',
                self.load_dvm_parameter_list,
                self.is_connected)
-        return menu
+        return m.menu
 
     def is_connected(self):
         """Check if online control is connected."""
