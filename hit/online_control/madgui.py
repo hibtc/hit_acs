@@ -24,9 +24,6 @@ from .dvm_parameters import DVM_ParameterList
 # TODO: catch exceptions and display error messages
 
 
-DVM_PREFIX = 'dvm_'
-
-
 def strip_prefix(name, prefix):
     """Strip a specified prefix substring from a string."""
     if name.startswith(prefix):
@@ -35,34 +32,132 @@ def strip_prefix(name, prefix):
         return name
 
 
-def get_dvm_name(expr):
-    """Return DVM name for an element parameter or raise ``ValueError``."""
+def get_element_attribute(element, attr):
+    """
+    Return a tuple (name, value) for a given element attribute from MAD-X.
+
+    Return value:
+
+        name        assignable/evaluatable name of the attribute
+        value       current value of the attribute
+
+    Example:
+
+        >>> element = madx.sequences['lebt']['r1qs1:1']
+        >>> get_element_attribute(element, 'k1')
+        ('k1_r1qs1', -15.615323)
+    """
+    expr = element[attr]
     if isinstance(expr, SymbolicValue):
-        s = str(expr._expression)
+        name = str(expr._expression)
+        value = expr.value
     elif isinstance(expr, Expression):
-        s = str(expr)
+        name = str(expr)
+        value = expr.value
     else:
-        raise ValueError("Not an expression!")
-    if not is_identifier(s):
-        raise ValueError("Not an identifier!")
-    if not s.startswith(DVM_PREFIX):
-        raise ValueError("Parameter not marked to be read from DVM.")
-    # remove the prefix:
-    return s[len(DVM_PREFIX):]
-
-
-Param = namedtuple('Param', [
-    'elem_type',    # element type (e.g. 'quadrupole')
-    'param_type',   # parameter type (e.g. 'K1')
-    'dvm_name',     # parameter name as expected by DVM
-    'madx_name',    # knob name as defined in .madx file
-    'madx_value',   # knob value as retrieved from MAD-X
-])
+        name = ''       # not a valid identifier! -> for check below
+        value = expr    # shoud be float in this code branch
+    if not is_identifier(name):
+        name = strip_element_suffix(element['name']) + '->' + attr
+    return (name, value)
 
 
 def load_config():
     """Return the builtin configuration."""
     return yaml.safe_load(resource_string('hit.online_control', 'config.yml'))
+
+
+class _MultiParamImporter(object):
+
+    def __init__(self, mad_elem, dvm_params):
+        self.mad_elem = mad_elem
+        self.dvm_params_map = dicti((dvm_param.name, dvm_param)
+                                    for dvm_param in dvm_params)
+
+    def __iter__(self):
+        for param_name in self._known_param_names:
+            param_func = getattr(self, param_name)
+            try:
+                yield param_func(self.mad_elem, self.dvm_params_map)
+            except ValueError:
+                pass
+
+
+class ParamConverterBase(object):
+
+    """
+    Base class for DVM to MAD-X parameter importers/exporters.
+
+    Members set in constructor:
+
+        el_name         element name usable without :d suffix
+        mad_elem        dict with MAD-X element info
+        dvm_param       DVM parameter info (:class:`DVM_Parameter`)
+        dvm_name        short for .dvm_param.name (fit for GetFloatValue/...)
+        mad_name        lvalue name to assign value in MAD-X
+        mad_value       current value in MAD-X
+
+    Abstract properties:
+
+        mad_symb        attribute name in MAD-X (e.g. 'k1')
+        dvm_symb        parameter prefix in DVM (e.g. 'kL')
+
+    Abstract methods:
+
+        madx2dvm        convert MAD-X value to DVM value
+        dvm2madx        convert DVM value to MAD-X value
+    """
+
+    def __init__(self, mad_elem, dvm_params_map):
+        """
+        Fill members with info about the DVM parameter/MAD-X attribute.
+
+        :raises ValueError: if this parameter is not available in DVM
+        """
+        el_name = strip_element_suffix(mad_elem['name'])
+        dvm_name = self.dvm_symb + '_' + el_name
+        try:
+            dvm_param = dvm_params_map[dvm_name]
+        except KeyError:
+            raise ValueError
+        mad_name, mad_value = get_element_attribute(mad_elem, self.mad_symb)
+        # now simply store values
+        self.el_name = el_name
+        self.mad_elem = mad_elem
+        self.dvm_param = dvm_param
+        self.dvm_name = dvm_name
+        self.mad_name = mad_name
+        self.mad_value = mad_value
+
+    def madx2dvm(self, value):
+        raise NotImplementedError
+
+    def dvm2madx(self, value):
+        raise NotImplementedError
+
+
+class ParamImporter:
+
+    """
+    Namespace for classes that list the .
+    """
+
+    class quadrupole(_MultiParamImporter):
+
+        _known_param_names = ['k1']
+
+        class k1(ParamConverterBase):
+
+            mad_symb = 'k1'
+            dvm_symb = 'kL'
+
+            def madx2dvm(self, value):
+                return value * self.mad_elem['l']
+
+            def dvm2madx(self, value):
+                return value / self.mad_elem['l']
+
+    # TODO: more coefficients
 
 
 class Plugin(object):
@@ -172,31 +267,45 @@ class Plugin(object):
 
     def iter_dvm_params(self):
         """
-        Iterate over all DVM parameters in the current sequence.
+        Iterate over all known DVM parameters belonging to elements in the
+        current sequence.
 
-        Yields instances of type :class:`Param`.
+        Yields tuples of the form (Element, list[DVM_Parameter]).
         """
-        for elem in self._segman.elements:
-            for param_name in elem:
-                knob = elem[param_name]
-                try:
-                    dvm_name = get_dvm_name(knob)
-                except ValueError:
-                    continue
-                yield Param(elem_type=elem['type'],
-                            param_type=param_name,
-                            dvm_name=dvm_name,
-                            madx_name=knob._expression,
-                            madx_value=knob.value)
+        for mad_elem in self._segman.elements:
+            try:
+                el_name = strip_element_suffix(mad_elem['name'])
+                dvm_par = self._dvm_params[el_name]
+                yield (mad_elem, dvm_par)
+            except KeyError:
+                continue
+
+    def iter_importable_dvm_params(self):
+        """
+        Iterate over all DVM parameters that can be imported as MAD-X element
+        attributes in the current sequence.
+
+        Yields instances of type :class:`ParamConverterBase`.
+        """
+        for mad_elem, dvm_params in self.iter_dvm_params():
+            try:
+                importer = getattr(ParamImporter, mad_elem['type'])
+            except AttributeError:
+                continue
+            for param in importer(mad_elem, dvm_params):
+                if param.dvm_param.read:
+                    yield param
 
     def read_all(self):
         """Read all parameters from the online database."""
         segman = self._segman
         madx = segman.simulator.madx
-        for par in self.iter_dvm_params():
-            value = self.get_value(par.param_type, par.dvm_name)
-            plain_value = segman.simulator.utool.strip_unit(par.param_type, value)
-            madx.command(**{str(par.madx_name): plain_value})
+        for par in self.iter_importable_dvm_params():
+            dvm_value = self.get_value(par.dvm_symb, par.dvm_name)
+            mad_value = par.dvm2madx(dvm_value)
+            plain_value = segman.simulator.utool.strip_unit(par.mad_symb,
+                                                            mad_value)
+            madx.set_value(par.mad_name, plain_value)
         # TODO: update only changed segments?:
         # TODO: segment ordering
         for segment in segman.segments.values():
@@ -218,7 +327,7 @@ class Plugin(object):
     def get_value(self, param_type, dvm_name):
         """Get a single value from the online database with unit."""
         plain_value = self.get_float_value(dvm_name)
-        return self._utool.add_unit(param_type, plain_value)
+        return self._utool.add_unit(param_type.lower(), plain_value)
 
     def set_value(self, param_type, dvm_name, value):
         """Set a single parameter in the online database with unit."""
