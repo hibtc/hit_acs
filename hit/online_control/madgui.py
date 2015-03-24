@@ -4,11 +4,6 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 
 from __future__ import absolute_import
 
-from collections import namedtuple
-from pkg_resources import resource_string
-
-import yaml
-
 from pydicti import dicti
 
 from cpymad.types import Expression
@@ -19,6 +14,7 @@ from madgui.util import unit
 
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
+from .util import load_yaml_resource
 
 
 # TODO: catch exceptions and display error messages
@@ -64,7 +60,7 @@ def get_element_attribute(element, attr):
 
 def load_config():
     """Return the builtin configuration."""
-    return yaml.safe_load(resource_string('hit.online_control', 'config.yml'))
+    return load_yaml_resource('hit.online_control', 'config.yml')
 
 
 class _MultiParamImporter(object):

@@ -5,7 +5,16 @@ Utilities for unicode IO.
 import csv
 import sys
 
+from pkg_resources import resource_string
+
 import yaml
+
+
+__all__ = [
+    'csv_unicode_reader',
+    'yaml_load_unicode',
+    'load_yaml_resource',
+]
 
 
 if sys.version_info[0] < 3:
@@ -35,3 +44,8 @@ def yaml_load_unicode(stream, Loader=yaml.SafeLoader):
         yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG,
         construct_yaml_str)
     return yaml.load(stream, UnicodeLoader)
+
+
+def load_yaml_resource(package, filename):
+    """Return the builtin configuration."""
+    return yaml.safe_load(resource_string(package, filename))
