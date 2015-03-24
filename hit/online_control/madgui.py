@@ -57,10 +57,12 @@ class Plugin(object):
         self._dvm_params = None
         units = unit.from_config_dict(self._config['units'])
         self._utool = unit.UnitConverter(units)
-        # Create menu
-        menu = wx.Menu()
+        menu = self.create_menu(frame)
         menubar.Append(menu, '&Online control')
-        # Create menu items:
+
+    def create_menu(self, frame):
+        """Create menu."""
+        menu = wx.Menu()
         def Append(label, help, action, condition):
             item = menu.Append(wx.ID_ANY, label, help)
             def on_click(event):
@@ -102,6 +104,7 @@ class Plugin(object):
                'Load list of DVM parameters',
                self.load_dvm_parameter_list,
                self.is_connected)
+        return menu
 
     def is_connected(self):
         """Check if online control is connected."""
