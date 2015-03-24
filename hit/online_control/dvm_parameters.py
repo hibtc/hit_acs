@@ -19,6 +19,7 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
     'ui_hint',
     'read',
     'write',
+    'ui_prec',
     'unit',
     'ui_unit',
     'ui_conv',
@@ -36,6 +37,10 @@ def CsvStr(s):
 
 def CsvBool(s):
     return s == 'ja' if s else None
+
+
+def CsvInt(s):
+    return int(s) if s else None
 
 
 def CsvFloat(s):
@@ -116,7 +121,7 @@ class DVM_ParameterList(object):
         '',                 # Input Param wird Output Param bei MEFI
         '',                 # In Gui Init änderbar
         '',                 # Daten-typ
-        '',                 # Präzision (Anz. Nachkomma im GUI)
+        'ui_prec',          # Präzision (Anz. Nachkomma im GUI)
         'unit',             # Einheit Parameter
         'ui_unit',          # Einheit Anzeige im GUI
         'ui_conv',          # Umrechnungsfaktor Einheit--> Einheit GUI
@@ -141,6 +146,7 @@ class DVM_ParameterList(object):
         'ui_hint': CsvStr,
         'read': CsvBool,
         'write': CsvBool,
+        'ui_prec': CsvInt,
         'unit': CsvUnit,
         'ui_unit': CsvUnit,
         'ui_conv': CsvFloat,
