@@ -28,20 +28,20 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
 #----------------------------------------
 
 def CsvStr(s):
-    return s.strip()
+    return s
 
 
 def CsvBool(s):
-    return s.strip() == 'ja' if s else None
+    return s == 'ja' if s else None
 
 
 def CsvFloat(s):
-    return float(s.strip())
+    return float(s) if s else None
 
 
 def CsvUnit(s):
     # TODO: parse unit?!
-    return s.strip()
+    return s
 
 
 
@@ -70,7 +70,7 @@ class DVM_ParameterList(object):
         types = cls._csv_column_types
         index = cls._csv_column_index
         parse_row = lambda row: DVM_Parameter(**{
-            n: types[n](row[i])
+            n: types[n](row[i].strip())
             for n, i in index.items()
         })
         cluster_name = ''
