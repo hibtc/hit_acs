@@ -7,6 +7,6 @@
 #
 # Valid unit names are from ``unum.units``.
 units:
-  k1:       {m: -2}
+  kl:       {m: -1}
   ks:       {m: -1}
   angle:    rad
