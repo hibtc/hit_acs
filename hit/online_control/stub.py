@@ -11,7 +11,7 @@ from . import beamoptikdll
 
 def _unbox(param):
     """Unbox a call parameter created by ctypes.byref."""
-    return param.c_str if isinstance(param, c_char_p) else param._obj
+    return param.value if isinstance(param, c_char_p) else param._obj
 
 
 def _api_meth(func):
