@@ -306,36 +306,29 @@ class Plugin(object):
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
-        try:
-            sd_values = {
-                'widthx': self._get_sd_value(element_name, 'widthx'),
-                'widthy': self._get_sd_value(element_name, 'widthy'),
-                'posx': self._get_sd_value(element_name, 'posx'),
-                'posy': self._get_sd_value(element_name, 'posy'),
-            }
-        except RuntimeError:
-            return {}
-        # The magic number -9999.0 is used to signal that the value cannot be
-        # used.
-        # TODO: sometimes width=0 is returned. What is the reason/meaning of
-        # this?
-        if sd_values['widthx'] <= 0 or sd_values['widthy'] <= 0:
-            return {}
-        mm = unit.units.mm
-        return {
-            'widthx': sd_values['widthx'] * mm,
-            'widthy': sd_values['widthy'] * mm,
-            'posx': sd_values['posx'] * mm,
-            'posy': sd_values['posy'] * mm,
-        }
+        sd_values = {}
+        for feature in ('widthx', 'widthy', 'posx', 'posy'):
+            # TODO: Handle usability of parameters individually
+            try:
+                val = self._get_sd_value(element_name, feature)
+            except RuntimeError:
+                return {}
+            # The magic number -9999.0 signals corrupt values.
+            # FIXME: Sometimes width=0 is returned. ~ Meaning?
+            if feature.startswith('width') and val.magnitude <= 0:
+                return {}
+            sd_values[feature] = val
+        return sd_values
 
     def _get_sd_value(self, element_name, param_name):
-        """Read a single SD value into a dictionary."""
+        """Return a single SD value (with unit)."""
         element_name = strip_element_suffix(element_name)
         element_name = strip_prefix(element_name, 'sd_')
         param_name = param_name
         sd_name = param_name + '_' + element_name
-        return self._dvm.GetFloatValueSD(sd_name.upper())
+        plain_value = self._dvm.GetFloatValueSD(sd_name.upper())
+        # NOTE: Values returned by SD monitors are in millimeter:
+        return plain_value * unit.units.mm
 
     def iter_monitors(self):
         """Iterate SD monitor elements (element dicts) in current sequence."""
