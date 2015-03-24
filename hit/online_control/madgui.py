@@ -5,6 +5,8 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 from __future__ import absolute_import
 
 from itertools import chain
+import sys
+import traceback
 
 from pydicti import dicti
 
@@ -125,6 +127,11 @@ class Plugin(object):
         try:
             self._dvm = self._BeamOptikDLL.load_library()
         except OSError:
+            exc_str = traceback.format_exception_only(*sys.exc_info()[:2])
+            wx.MessageBox("".join(exc_str),
+                          'Failed to load DVM module',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
             return
         self._connect()
 
