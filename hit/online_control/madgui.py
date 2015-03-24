@@ -57,7 +57,9 @@ class Plugin(object):
         database. This works only if the corresponding parameters were named
         exactly as in the database and are assigned with the ":=" operator.
         """
-        # TODO: don't show menuitem if the .dll is not available?
+        if not (self._check_dll() or self._check_stub()):
+            # Can't connect, so no point in showing anything.
+            return
         self._frame = frame
         self._dvm = None
         self._config = load_config()
@@ -67,19 +69,35 @@ class Plugin(object):
         submenu = self.create_menu()
         menu.extend(frame, menubar, [submenu])
 
+    def _check_dll(self):
+        """Check if the 'Connect' menu item should be shown."""
+        return self._BeamOptikDLL.check_library()
+
+    def _check_stub(self):
+        """Check if the 'Connect &test stub' menu item should be shown."""
+        # TODO: check for debug mode?
+        return True
+
     def create_menu(self):
         """Create menu."""
         Item = menu.CondItem
         Separator = menu.Separator
-        return menu.Menu('&Online control', [
-            Item('&Connect',
-                 'Connect online control interface',
-                 self.load_and_connect,
-                 self.is_disconnected),
-            Item('Connect &test stub',
-                 'Connect a stub version (for offline testing)',
-                 self.load_and_connect_stub,
-                 self.is_disconnected),
+        items = []
+        if self._check_dll():
+            items += [
+                Item('&Connect',
+                     'Connect online control interface',
+                     self.load_and_connect,
+                     self.is_disconnected),
+            ]
+        if self._check_stub():
+            items += [
+                Item('Connect &test stub',
+                     'Connect a stub version (for offline testing)',
+                     self.load_and_connect_stub,
+                     self.is_disconnected),
+            ]
+        items += [
             Item('&Disconnect',
                  'Disconnect online control interface',
                  self.disconnect,
@@ -108,7 +126,8 @@ class Plugin(object):
                  'Load list of DVM parameters',
                  self.load_dvm_parameter_list,
                  self.is_connected),
-        ])
+        ]
+        return menu.Menu('&Online control', items)
 
     def is_connected(self):
         """Check if online control is connected."""
