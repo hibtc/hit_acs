@@ -127,6 +127,7 @@ class BeamOptikDllProxy(object):
 
     @_api_meth
     def SetNewValueCallback(self, iid, callback):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth
@@ -148,15 +149,18 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def StartRampDataGeneration(self, iid,
                                 vaccnum, energy, focus, intensity, order_num):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth
     def GetRampDataValue(self, iid, order_num, event_num, delay,
                          parameter_name, device_name, value):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth
     def SetIPC_DVM_ID(self, iid, name):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth
