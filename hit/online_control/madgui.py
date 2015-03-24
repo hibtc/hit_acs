@@ -9,6 +9,7 @@ from pydicti import dicti
 from cpymad.util import strip_element_suffix
 from madgui.core import wx
 from madgui.util import unit
+from madgui.widget import menu
 
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
@@ -57,51 +58,47 @@ class Plugin(object):
         self._dvm_params = None
         units = unit.from_config_dict(self._config['units'])
         self._utool = unit.UnitConverter(units)
-        # Create menu
-        menu = wx.Menu()
-        menubar.Append(menu, '&Online control')
-        # Create menu items:
-        def Append(label, help, action, condition):
-            item = menu.Append(wx.ID_ANY, label, help)
-            def on_click(event):
-                if condition():
-                    action()
-            def on_update(event):
-                event.Enable(condition())
-            frame.Bind(wx.EVT_MENU, on_click, item)
-            frame.Bind(wx.EVT_UPDATE_UI, on_update, item)
-        Append('&Connect',
-                'Connect online control interface',
-                self.connect,
-                self.is_disconnected)
-        Append('&Disconnect',
-                'Disconnect online control interface',
-                self.disconnect,
-                self.is_connected)
-        menu.AppendSeparator()
-        Append('&Read strengthes',
-                'Read magnet strengthes from the online database',
-                self.read_all,
-                self.has_sequence)
-        Append('&Write strengthes',
-                'Write magnet strengthes to the online database',
-                self.write_all,
-                self.has_sequence)
-        menu.AppendSeparator()
-        Append('&Execute changes',
-                'Apply parameter written changes to magnets',
-                self.execute,
-                self.has_sequence)
-        menu.AppendSeparator()
-        Append('Read &monitors',
-               'Read SD values (beam envelope/position) from monitors',
-               self.read_all_sd_values,
-               self.has_sequence)
-        menu.AppendSeparator()
-        Append('&Load DVM parameter list',
-               'Load list of DVM parameters',
-               self.load_dvm_parameter_list,
-               self.is_connected)
+        submenu = self.create_menu()
+        menu.extend(frame, menubar, [submenu])
+
+    def create_menu(self):
+        """Create menu."""
+        Item = menu.CondItem
+        Separator = menu.Separator
+        return menu.Menu('&Online control', [
+            Item('&Connect',
+                 'Connect online control interface',
+                 self.connect,
+                 self.is_disconnected),
+            Item('&Disconnect',
+                 'Disconnect online control interface',
+                 self.disconnect,
+                 self.is_connected),
+            Separator,
+            Item('&Read strengthes',
+                 'Read magnet strengthes from the online database',
+                 self.read_all,
+                 self.has_sequence),
+            Item('&Write strengthes',
+                 'Write magnet strengthes to the online database',
+                 self.write_all,
+                 self.has_sequence),
+            Separator,
+            Item('&Execute changes',
+                 'Apply parameter written changes to magnets',
+                 self.execute,
+                 self.has_sequence),
+            Separator,
+            Item('Read &monitors',
+                 'Read SD values (beam envelope/position) from monitors',
+                 self.read_all_sd_values,
+                 self.has_sequence),
+            Separator,
+            Item('&Load DVM parameter list',
+                 'Load list of DVM parameters',
+                 self.load_dvm_parameter_list,
+                 self.is_connected),
+        ])
 
     def is_connected(self):
         """Check if online control is connected."""
