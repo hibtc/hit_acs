@@ -15,6 +15,7 @@ from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
+from .dialogs import SyncParamDialog
 
 
 # TODO: catch exceptions and display error messages
@@ -178,14 +179,28 @@ class Plugin(object):
 
     def read_all(self):
         """Read all parameters from the online database."""
+        # TODO: cache and reuse 'active' flag for each parameter
+        rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
+                for param in self.iter_importable_dvm_params()]
+        dlg = SyncParamDialog(self._frame,
+                              'Import parameters from DVM',
+                              data=rows)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.read_these(dlg.selected)
+
+    def read_these(self, params):
+        """
+        Import list of DVM parameters to MAD-X.
+
+        :param list params: List of tuples (ParamConverterBase, dvm_value)
+        """
         segman = self._segman
         madx = segman.simulator.madx
-        for par in self.iter_importable_dvm_params():
-            dvm_value = self.get_value(par.dvm_symb, par.dvm_name)
-            mad_value = par.dvm2madx(dvm_value)
-            plain_value = segman.simulator.utool.strip_unit(par.mad_symb,
-                                                            mad_value)
-            madx.set_value(par.mad_name, plain_value)
+        strip_unit = segman.simulator.utool.strip_unit
+        for param, dvm_value in params:
+            mad_value = param.dvm2madx(dvm_value)
+            plain_value = strip_unit(param.mad_symb, mad_value)
+            madx.set_value(param.mad_name, plain_value)
         # TODO: update only changed segments?:
         # TODO: segment ordering
         for segment in segman.segments.values():
