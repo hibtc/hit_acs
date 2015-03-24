@@ -166,6 +166,8 @@ class Plugin(object):
     Plugin class for MadGUI.
     """
 
+    _BeamOptikDLL = BeamOptikDLL
+
     def __init__(self, frame, menubar):
         """
         Add plugin to the frame.
@@ -177,7 +179,6 @@ class Plugin(object):
         """
         # TODO: don't show menuitem if the .dll is not available?
         self._frame = frame
-        self._BeamOptikDLL = BeamOptikDLL
         self._dvm = None
         self._config = load_config()
         self._dvm_params = None
