@@ -35,4 +35,3 @@ def yaml_load_unicode(stream, Loader=yaml.SafeLoader):
         yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG,
         construct_yaml_str)
     return yaml.load(stream, UnicodeLoader)
-

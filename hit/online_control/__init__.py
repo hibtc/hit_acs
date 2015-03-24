@@ -5,6 +5,7 @@ Python API for talking to the HIT online control/DVM.
 
 from __future__ import unicode_literals
 
+
 __title__ = 'hit_online_control'
 __summary__ = 'Online control for the HIT accelerator facility.'
 __uri__ = 'https://bitbucket.org/coldfix/hit-online-control'
@@ -28,7 +29,6 @@ __classifiers__ = [
     'Topic :: Scientific/Engineering :: Medical Science Apps.',
     'Topic :: Scientific/Engineering :: Physics',
 ]
-
 
 entry_points = """
     [madgui.widget.notebook.menu]

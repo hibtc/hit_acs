@@ -35,10 +35,12 @@ class App(wx.App):
         loc['dvm'].GetInterfaceInstance()
         return True
 
+
 def main():
     """Invoke GUI application."""
     app = App(redirect=False)
     app.MainLoop()
+
 
 if __name__ == '__main__':
     main()
