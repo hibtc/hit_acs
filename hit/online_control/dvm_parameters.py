@@ -9,6 +9,7 @@ from collections import namedtuple
 
 import yaml
 
+from madgui.util import unit
 from .util import csv_unicode_reader, yaml_load_unicode
 
 
@@ -40,8 +41,12 @@ def CsvFloat(s):
 
 
 def CsvUnit(s):
-    # TODO: parse unit?!
-    return s
+    if s == '%':
+        return 0.01
+    s = s.replace(u'grad', u'degree')
+    s = s.replace(u'Ohm', u'ohm')
+    s = s.replace(u'part.', u'count')   # used for particle count
+    return unit.from_config(s)
 
 
 
