@@ -1,12 +1,20 @@
 """
 Stub class for BeamOptikDLL.dll ctypes proxy objects as used by
-:class:`~hit.online_control.beamoptikdll.BeamOptikDLL`.
+:class:`~hit.online_control.beamoptikdll.BeamOptikDLL`. Primarily used for
+offline testing of the basic functionality.
 """
 
 import functools
 from ctypes import c_char_p
 
+from pydicti import dicti
+
 from . import beamoptikdll
+
+
+__all__ = [
+    'BeamOptikDllProxy',
+]
 
 
 def _unbox(param):
@@ -39,9 +47,23 @@ def _api_meth(func):
     return wrapper
 
 
+def _get_param_example_value(param):
+    """Get example value in from a DVM_Parameter (in DVM database unit)."""
+    if param.example is None:
+        # FIXME: how to handle example=None?
+        return None
+    if param.ui_conv:
+        return param.example / param.ui_conv
+    else:
+        return param.example
+
+
 class BeamOptikDllProxy(object):
 
     """A fake implementation for a ctypes proxy of the BeamOptikDLL."""
+
+    # TODO: Support read-only/write-only parameters
+    # TODO: Prevent writing unknown parameters by default
 
     def __init__(self, data, logger=None):
         """Initialize new library instance with no interface instances."""
@@ -49,6 +71,18 @@ class BeamOptikDllProxy(object):
         self.instances = {}
         self.logger = logger
         self.next_iid = 0
+
+    def _use_dvm_parameter_examples(self, dvm_params):
+        """
+        Initialize DVM parameter values from examples as given in an imported
+        DVM parameter list.
+
+        :param list dvm_params: list of :class:`DVM_Parameter`
+        """
+        self.data['control'] = dicti(
+            (param.name, _get_param_example_value(param))
+            for param in dvm_params
+            if param.read or param.write)
 
     @_api_meth
     def DisableMessageBoxes(self):

@@ -4,6 +4,8 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 
 from __future__ import absolute_import
 
+from itertools import chain
+
 from pydicti import dicti
 
 from cpymad.util import strip_element_suffix
@@ -357,27 +359,17 @@ class Plugin(object):
         # TODO: let user choose the correct delimiter/encoding settings
         try:
             parlist = DVM_ParameterList.from_csv(filename, 'utf-8')
-            self._dvm_params = dicti(parlist._data)
         except UnicodeDecodeError:
             wx.MessageBox('I can only load UTF-8 encoded files!',
                           'UnicodeDecodeError',
                           wx.ICON_ERROR|wx.OK,
                           parent=self._frame)
+        else:
+            self.set_dvm_parameter_list(parlist)
 
-        # TODO: this code should really be put in a separate function, to
-        # have an API that enables reloading the DVM parameters:
+    def set_dvm_parameter_list(self, parlist):
+        """Use specified DVM_ParameterList."""
+        self._dvm_params = dicti(parlist._data)
         if self._testing:
-            # for testing:
-            merged_params = dicti()
-            for group in self._dvm_params.values():
-                for param in group:
-                    if (param.read or param.write) and param.example is not None:
-                        if param.ui_conv:
-                            value = param.example / param.ui_conv
-                        else:
-                            value = param.example
-                        merged_params[param.name] = value
-
-            self._dvm._lib.data = {
-                'control': merged_params,
-            }
+            self._dvm._lib._use_dvm_parameter_examples(
+                chain.from_iterable(self._dvm_params.values()))
