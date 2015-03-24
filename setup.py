@@ -43,6 +43,9 @@ def main():
                 'online_control = hit.online_control:entry_points'
             ]
         },
+        install_requires=[
+            'pydicti>=0.0.4',
+        ],
     )
 
 

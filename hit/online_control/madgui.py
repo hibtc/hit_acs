@@ -9,6 +9,8 @@ from pkg_resources import resource_string
 
 import yaml
 
+from pydicti import dicti
+
 from cpymad.types import Expression
 from cpymad.util import strip_element_suffix, is_identifier
 from madgui.util.symbol import SymbolicValue
@@ -83,6 +85,7 @@ class Plugin(object):
         self._BeamOptikDLL = BeamOptikDLL
         self._dvm = None
         self._config = load_config()
+        self._dvm_params = None
         units = unit.from_config_dict(self._config['units'])
         self._utool = unit.UnitConverter(units)
         # Create menu
@@ -125,6 +128,11 @@ class Plugin(object):
                'Read SD values (beam envelope/position) from monitors',
                self.read_all_sd_values,
                self.has_sequence)
+        menu.AppendSeparator()
+        Append('&Load DVM parameter list',
+               'Load list of DVM parameters',
+               self.load_dvm_parameter_list,
+               self.is_connected)
 
     def is_connected(self):
         """Check if online control is connected."""
@@ -283,3 +291,22 @@ class Plugin(object):
             if not element['type'].lower().endswith('monitor'):
                 continue
             yield element
+
+    def load_dvm_parameter_list(self):
+        dlg = wx.FileDialog(
+            self._frame,
+            "Load DVM-Parameter list. The CSV file must be ';' separated and 'utf-8' encoded.",
+            wildcard="CSV files (*.csv)|*.csv",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        if dlg.ShowModal() != wx.ID_OK:
+            return
+        filename = dlg.GetPath()
+        # TODO: let user choose the correct delimiter/encoding settings
+        try:
+            parlist = DVM_ParameterList.from_csv(filename, 'utf-8')
+            self._dvm_params = dicti(parlist._data)
+        except UnicodeDecodeError:
+            wx.MessageBox('I can only load UTF-8 encoded files!',
+                          'UnicodeDecodeError',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
