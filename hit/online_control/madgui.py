@@ -161,10 +161,10 @@ class Plugin(object):
             except KeyError:
                 continue
 
-    def iter_importable_dvm_params(self):
+    def iter_convertible_dvm_params(self):
         """
-        Iterate over all DVM parameters that can be imported as MAD-X element
-        attributes in the current sequence.
+        Iterate over all DVM parameters that can be converted to/from MAD-X
+        element attributes in the current sequence.
 
         Yields instances of type :class:`ParamConverterBase`.
         """
@@ -174,14 +174,33 @@ class Plugin(object):
             except AttributeError:
                 continue
             for param in importer(mad_elem, dvm_params):
-                if param.dvm_param.read:
-                    yield param
+                yield param
+
+    def iter_readable_dvm_params(self):
+        """
+        Iterate over all DVM parameters that can be imported as MAD-X element
+        attributes in the current sequence.
+
+        Yields instances of type :class:`ParamConverterBase`.
+        """
+        return (p for p in self.iter_convertible_dvm_params()
+                if p.dvm_param.read)
+
+    def iter_writable_dvm_params(self):
+        """
+        Iterate over all DVM parameters that can be set from  MAD-X element
+        attributes in the current sequence.
+
+        Yields instances of type :class:`ParamConverterBase`.
+        """
+        return (p for p in self.iter_convertible_dvm_params()
+                if p.dvm_param.write)
 
     def read_all(self):
         """Read all parameters from the online database."""
         # TODO: cache and reuse 'active' flag for each parameter
         rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
-                for param in self.iter_importable_dvm_params()]
+                for param in self.iter_readable_dvm_params()]
         dlg = SyncParamDialog(self._frame,
                               'Import parameters from DVM',
                               data=rows)
