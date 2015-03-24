@@ -368,9 +368,6 @@ class Plugin(object):
         # have an API that enables reloading the DVM parameters:
         if self._testing:
             # for testing:
-            from . import stub
-            logger = self._frame.getLogger('hit.online_control.stub')
-
             merged_params = dicti()
             for group in self._dvm_params.values():
                 for param in group:
