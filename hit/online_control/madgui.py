@@ -284,7 +284,7 @@ class Plugin(object):
     def read_all_sd_values(self):
         """Read out SD values (beam position/envelope)."""
         segman = self._segman
-        for elem in self.iter_sd_monitors():
+        for elem in self.iter_monitors():
             sd_values = self.get_sd_values(elem['name'])
             if not sd_values:
                 continue
@@ -337,14 +337,11 @@ class Plugin(object):
         sd_name = param_name + '_' + element_name
         return self._dvm.GetFloatValueSD(sd_name.upper())
 
-    def iter_sd_monitors(self):
+    def iter_monitors(self):
         """Iterate SD monitor elements (element dicts) in current sequence."""
         for element in self._segman.elements:
-            if not element['name'].lower().startswith('sd_'):
-                continue
-            if not element['type'].lower().endswith('monitor'):
-                continue
-            yield element
+            if element['type'].lower().endswith('monitor'):
+                yield element
 
     def load_dvm_parameter_list(self):
         """Show a FileDialog to import a new DVM parameter list."""
