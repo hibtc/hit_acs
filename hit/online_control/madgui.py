@@ -21,6 +21,7 @@ from .dialogs import SyncParamDialog
 
 
 # TODO: catch exceptions and display error messages
+# TODO: automate loading DVM parameters via model and/or named hook
 
 
 def strip_prefix(name, prefix):
