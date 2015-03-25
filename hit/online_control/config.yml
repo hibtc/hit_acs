@@ -1,4 +1,3 @@
-
 # Units for DVM parameters as expected by BeamOptikDLL.
 # The following two formats are accepted for units:
 #
@@ -7,6 +6,6 @@
 #
 # Valid unit names are from ``unum.units``.
 units:
-  k1:       {m: -2}
-  ks:       {m: -1}
+  kl:       m^-1
+  ks:       m^-1
   angle:    rad

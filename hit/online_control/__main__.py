@@ -12,15 +12,17 @@ console.
 
 The DLL is connected on startup and the wrapper object is stored in the
 global variable ``dvm``.
-
 """
+
 import wx
 import wx.py.crust
 import logging
 
 from hit.online_control.beamoptikdll import BeamOptikDLL
 
+
 class App(wx.App):
+
     def OnInit(self):
         loc = {}
         frame = wx.py.crust.CrustFrame(locals=loc)
@@ -33,11 +35,12 @@ class App(wx.App):
         loc['dvm'].GetInterfaceInstance()
         return True
 
+
 def main():
     """Invoke GUI application."""
     app = App(redirect=False)
     app.MainLoop()
 
+
 if __name__ == '__main__':
     main()
-

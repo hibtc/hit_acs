@@ -1,17 +1,25 @@
 """
 Stub class for BeamOptikDLL.dll ctypes proxy objects as used by
-:class:`~hit.online_control.beamoptikdll.BeamOptikDLL`.
+:class:`~hit.online_control.beamoptikdll.BeamOptikDLL`. Primarily used for
+offline testing of the basic functionality.
 """
 
 import functools
 from ctypes import c_char_p
 
+from pydicti import dicti
+
 from . import beamoptikdll
+
+
+__all__ = [
+    'BeamOptikDllProxy',
+]
 
 
 def _unbox(param):
     """Unbox a call parameter created by ctypes.byref."""
-    return param.c_str if isinstance(param, c_char_p) else param._obj
+    return param.value if isinstance(param, c_char_p) else param._obj
 
 
 def _api_meth(func):
@@ -39,9 +47,23 @@ def _api_meth(func):
     return wrapper
 
 
+def _get_param_example_value(param):
+    """Get example value in from a DVM_Parameter (in DVM database unit)."""
+    if param.example is None:
+        # FIXME: how to handle example=None?
+        return None
+    if param.ui_conv:
+        return param.example / param.ui_conv
+    else:
+        return param.example
+
+
 class BeamOptikDllProxy(object):
 
     """A fake implementation for a ctypes proxy of the BeamOptikDLL."""
+
+    # TODO: Support read-only/write-only parameters
+    # TODO: Prevent writing unknown parameters by default
 
     def __init__(self, data, logger=None):
         """Initialize new library instance with no interface instances."""
@@ -49,6 +71,18 @@ class BeamOptikDllProxy(object):
         self.instances = {}
         self.logger = logger
         self.next_iid = 0
+
+    def _use_dvm_parameter_examples(self, dvm_params):
+        """
+        Initialize DVM parameter values from examples as given in an imported
+        DVM parameter list.
+
+        :param list dvm_params: list of :class:`DVM_Parameter`
+        """
+        self.data['control'] = dicti(
+            (param.name, _get_param_example_value(param))
+            for param in dvm_params
+            if param.read or param.write)
 
     @_api_meth
     def DisableMessageBoxes(self):
@@ -127,6 +161,7 @@ class BeamOptikDllProxy(object):
 
     @_api_meth
     def SetNewValueCallback(self, iid, callback):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth
@@ -148,15 +183,18 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def StartRampDataGeneration(self, iid,
                                 vaccnum, energy, focus, intensity, order_num):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth
     def GetRampDataValue(self, iid, order_num, event_num, delay,
                          parameter_name, device_name, value):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth
     def SetIPC_DVM_ID(self, iid, name):
+        """Not implemented."""
         raise NotImplementedError
 
     @_api_meth

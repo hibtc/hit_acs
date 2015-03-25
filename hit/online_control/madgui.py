@@ -4,85 +4,36 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 
 from __future__ import absolute_import
 
-import re
-from collections import namedtuple
-from pkg_resources import resource_string
+from itertools import chain
 
-import yaml
+from pydicti import dicti
 
-from cpymad.types import Expression
-from madgui.util.symbol import SymbolicValue
-
+from cpymad.util import strip_element_suffix
 from madgui.core import wx
 from madgui.util import unit
+from madgui.widget import menu
 
-from hit.online_control.beamoptikdll import BeamOptikDLL, ExecOptions
+from .beamoptikdll import BeamOptikDLL, ExecOptions
+from .dvm_parameters import DVM_ParameterList
+from .dvm_conversion import ParamImporter
+from .util import load_yaml_resource
+from .dialogs import SyncParamDialog
 
 
-# TODO: make GetFloatValueSD useful by implementing ranges
 # TODO: catch exceptions and display error messages
 
 
-DVM_PREFIX = 'dvm_'
-
-
-def is_identifier(name):
-    """Check if ``name`` is a valid identifier."""
-    return bool(re.match(r'^[a-z_]\w*$', name, re.IGNORECASE))
-
-
 def strip_prefix(name, prefix):
+    """Strip a specified prefix substring from a string."""
     if name.startswith(prefix):
         return name[len(prefix):]
     else:
         return name
 
 
-def get_dvm_name(expr):
-    """Return DVM name for an element parameter or raise ``ValueError``."""
-    if isinstance(expr, SymbolicValue):
-        s = str(expr._expression)
-    elif isinstance(expr, Expression):
-        s = str(expr)
-    else:
-        raise ValueError("Not an expression!")
-    if not is_identifier(s):
-        raise ValueError("Not an identifier!")
-    if not s.startswith(DVM_PREFIX):
-        raise ValueError("Parameter not marked to be read from DVM.")
-    # remove the prefix:
-    return s[len(DVM_PREFIX):]
-
-
-class Param(object):
-
-    """Struct that holds information about DVM parameters."""
-
-    def __init__(self,
-                 elem_type,
-                 param_type,
-                 dvm_name,
-                 madx_name,
-                 madx_value):
-        """
-        Construct struct instance.
-
-        :elem_type: element type (e.g. 'quadrupole')
-        :param_type: parameter type (e.g. 'K1')
-        :dvm_name: parameter name as expected by DVM
-        :madx_name: knob name as defined in .madx file
-        :madx_value: knob value as retrieved from MAD-X
-        """
-        self.elem_type = elem_type
-        self.param_type = param_type
-        self.dvm_name = dvm_name
-        self.madx_name = madx_name
-        self.madx_value = madx_value
-
-
 def load_config():
     """Return the builtin configuration."""
-    return yaml.safe_load(resource_string('hit.online_control', 'config.yml'))
+    return load_yaml_resource('hit.online_control', 'config.yml')
 
 
 class Plugin(object):
@@ -90,6 +41,9 @@ class Plugin(object):
     """
     Plugin class for MadGUI.
     """
+
+    _BeamOptikDLL = BeamOptikDLL
+    _testing = False
 
     def __init__(self, frame, menubar):
         """
@@ -102,51 +56,52 @@ class Plugin(object):
         """
         # TODO: don't show menuitem if the .dll is not available?
         self._frame = frame
-        self._BeamOptikDLL = BeamOptikDLL
         self._dvm = None
         self._config = load_config()
+        self._dvm_params = None
         units = unit.from_config_dict(self._config['units'])
         self._utool = unit.UnitConverter(units)
-        # Create menu
-        menu = wx.Menu()
-        menubar.Append(menu, '&Online control')
-        # Create menu items:
-        def Append(label, help, action, condition):
-            item = menu.Append(wx.ID_ANY, label, help)
-            def on_click(event):
-                if condition():
-                    action()
-            def on_update(event):
-                event.Enable(condition())
-            frame.Bind(wx.EVT_MENU, on_click, item)
-            frame.Bind(wx.EVT_UPDATE_UI, on_update, item)
-        Append('&Connect',
-                'Connect online control interface',
-                self.connect,
-                self.is_disconnected)
-        Append('&Disconnect',
-                'Disconnect online control interface',
-                self.disconnect,
-                self.is_connected)
-        menu.AppendSeparator()
-        Append('&Read strengthes',
-                'Read magnet strengthes from the online database',
-                self.read_all,
-                self.has_sequence)
-        Append('&Write strengthes',
-                'Write magnet strengthes to the online database',
-                self.write_all,
-                self.has_sequence)
-        menu.AppendSeparator()
-        Append('&Execute changes',
-                'Apply parameter written changes to magnets',
-                self.execute,
-                self.has_sequence)
-        menu.AppendSeparator()
-        Append('Read &monitors',
-               'Read SD values (beam envelope/position) from monitors',
-               self.read_all_sd_values,
-               self.has_sequence)
+        submenu = self.create_menu()
+        menu.extend(frame, menubar, [submenu])
+
+    def create_menu(self):
+        """Create menu."""
+        Item = menu.CondItem
+        Separator = menu.Separator
+        return menu.Menu('&Online control', [
+            Item('&Connect',
+                 'Connect online control interface',
+                 self.connect,
+                 self.is_disconnected),
+            Item('&Disconnect',
+                 'Disconnect online control interface',
+                 self.disconnect,
+                 self.is_connected),
+            Separator,
+            Item('&Read strengthes',
+                 'Read magnet strengthes from the online database',
+                 self.read_all,
+                 self.has_sequence),
+            Item('&Write strengthes',
+                 'Write magnet strengthes to the online database',
+                 self.write_all,
+                 self.has_sequence),
+            Separator,
+            Item('&Execute changes',
+                 'Apply parameter written changes to magnets',
+                 self.execute,
+                 self.has_sequence),
+            Separator,
+            Item('Read &monitors',
+                 'Read SD values (beam envelope/position) from monitors',
+                 self.read_all_sd_values,
+                 self.has_sequence),
+            Separator,
+            Item('&Load DVM parameter list',
+                 'Load list of DVM parameters',
+                 self.load_dvm_parameter_list,
+                 self.is_connected),
+        ])
 
     def is_connected(self):
         """Check if online control is connected."""
@@ -162,7 +117,16 @@ class Plugin(object):
 
     def connect(self):
         """Connect to online database."""
-        self._dvm = self._BeamOptikDLL.load_library()
+        try:
+            self._dvm = self._BeamOptikDLL.load_library()
+        except OSError:
+            # TODO: Loading the stub should be controlled via a MadGUI command
+            # line option, and not be specific to linux.
+            from . import stub
+            logger = self._frame.getLogger('hit.online_control.stub')
+            proxy = stub.BeamOptikDllProxy({}, logger)
+            self._dvm = self._BeamOptikDLL(proxy)
+            self._testing = True
         self._dvm.GetInterfaceInstance()
         self._frame.env['dvm'] = self._dvm
 
@@ -186,31 +150,84 @@ class Plugin(object):
 
     def iter_dvm_params(self):
         """
-        Iterate over all DVM parameters in the current sequence.
+        Iterate over all known DVM parameters belonging to elements in the
+        current sequence.
 
-        Yields instances of type :class:`Param`.
+        Yields tuples of the form (Element, list[DVM_Parameter]).
         """
-        for elem in self._segman.elements:
-            for param_name in elem:
-                knob = elem[param_name]
-                try:
-                    dvm_name = get_dvm_name(knob)
-                except ValueError:
-                    continue
-                yield Param(elem_type=elem['type'],
-                            param_type=param_name,
-                            dvm_name=dvm_name,
-                            madx_name=knob._expression,
-                            madx_value=knob.value)
+        for mad_elem in self._segman.elements:
+            try:
+                el_name = strip_element_suffix(mad_elem['name'])
+                dvm_par = self._dvm_params[el_name]
+                yield (mad_elem, dvm_par)
+            except KeyError:
+                continue
+
+    def iter_convertible_dvm_params(self):
+        """
+        Iterate over all DVM parameters that can be converted to/from MAD-X
+        element attributes in the current sequence.
+
+        Yields instances of type :class:`ParamConverterBase`.
+        """
+        for mad_elem, dvm_params in self.iter_dvm_params():
+            try:
+                importer = getattr(ParamImporter, mad_elem['type'])
+            except AttributeError:
+                continue
+            for param in importer(mad_elem, dvm_params):
+                yield param
+
+    def iter_readable_dvm_params(self):
+        """
+        Iterate over all DVM parameters that can be imported as MAD-X element
+        attributes in the current sequence.
+
+        Yields instances of type :class:`ParamConverterBase`.
+        """
+        return (p for p in self.iter_convertible_dvm_params()
+                if p.dvm_param.read)
+
+    def iter_writable_dvm_params(self):
+        """
+        Iterate over all DVM parameters that can be set from  MAD-X element
+        attributes in the current sequence.
+
+        Yields instances of type :class:`ParamConverterBase`.
+        """
+        return (p for p in self.iter_convertible_dvm_params()
+                if p.dvm_param.write)
 
     def read_all(self):
         """Read all parameters from the online database."""
+        # TODO: cache and reuse 'active' flag for each parameter
+        rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
+                for param in self.iter_readable_dvm_params()]
+        if not rows:
+            wx.MessageBox('There are no readable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
+                          'No readable parameters available',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+            return
+        dlg = SyncParamDialog(self._frame,
+                              'Import parameters from DVM',
+                              data=rows)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.read_these(dlg.selected)
+
+    def read_these(self, params):
+        """
+        Import list of DVM parameters to MAD-X.
+
+        :param list params: List of tuples (ParamConverterBase, dvm_value)
+        """
         segman = self._segman
         madx = segman.simulator.madx
-        for par in self.iter_dvm_params():
-            value = self.get_value(par.param_type, par.dvm_name)
-            plain_value = segman.simulator.utool.strip_unit(par.param_type, value)
-            madx.command(**{str(par.madx_name): plain_value})
+        strip_unit = segman.simulator.utool.strip_unit
+        for param, dvm_value in params:
+            mad_value = param.dvm2madx(dvm_value)
+            plain_value = strip_unit(param.mad_symb, mad_value)
+            madx.set_value(param.mad_name, plain_value)
         # TODO: update only changed segments?:
         # TODO: segment ordering
         for segment in segman.segments.values():
@@ -218,7 +235,28 @@ class Plugin(object):
 
     def write_all(self):
         """Write all parameters to the online database."""
-        for par in self.iter_dvm_params():
+
+        rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
+                for param in self.iter_writable_dvm_params()]
+        if not rows:
+            wx.MessageBox('There are no writable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
+                          'No writable parameters available',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+            return
+        dlg = SyncParamDialog(self._frame,
+                              'Set values in DVM from current sequence',
+                              data=rows)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.write_these(par for par, _ in dlg.selected)
+
+    def write_these(self, params):
+        """
+        Set parameter values in DVM from a list of parameters.
+
+        :param list params: List of ParamConverterBase
+        """
+        for par in params:
             self.set_value(par.param_type, par.dvm_name, par.madx_value)
 
     def get_float_value(self, dvm_name):
@@ -232,7 +270,7 @@ class Plugin(object):
     def get_value(self, param_type, dvm_name):
         """Get a single value from the online database with unit."""
         plain_value = self.get_float_value(dvm_name)
-        return self._utool.add_unit(param_type, plain_value)
+        return self._utool.add_unit(param_type.lower(), plain_value)
 
     def set_value(self, param_type, dvm_name, value):
         """Set a single parameter in the online database with unit."""
@@ -240,12 +278,13 @@ class Plugin(object):
         self.set_float_value(dvm_name, plain_value)
 
     def execute(self, options=ExecOptions.CalcDif):
+        """Execute changes (commits prioir set_value operations)."""
         self._dvm.ExecuteChanges(options)
 
     def read_all_sd_values(self):
         """Read out SD values (beam position/envelope)."""
         segman = self._segman
-        for elem in self.iter_sd_monitors():
+        for elem in self.iter_monitors():
             sd_values = self.get_sd_values(elem['name'])
             if not sd_values:
                 continue
@@ -267,41 +306,60 @@ class Plugin(object):
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
-        try:
-            sd_values = {
-                'widthx': self._get_sd_value(element_name, 'widthx'),
-                'widthy': self._get_sd_value(element_name, 'widthy'),
-                'posx': self._get_sd_value(element_name, 'posx'),
-                'posy': self._get_sd_value(element_name, 'posy'),
-            }
-        except RuntimeError:
-            return {}
-        # The magic number -9999.0 is used to signal that the value cannot be
-        # used.
-        # TODO: sometimes width=0 is returned. Whatis the reason/meaning of
-        # this?
-        if sd_values['widthx'] <= 0 or sd_values['widthy'] <= 0:
-            return {}
-        mm = unit.units.mm
-        return {
-            'widthx': sd_values['widthx'] * mm,
-            'widthy': sd_values['widthy'] * mm,
-            'posx': sd_values['posx'] * mm,
-            'posy': sd_values['posy'] * mm,
-        }
+        sd_values = {}
+        for feature in ('widthx', 'widthy', 'posx', 'posy'):
+            # TODO: Handle usability of parameters individually
+            try:
+                val = self._get_sd_value(element_name, feature)
+            except RuntimeError:
+                return {}
+            # The magic number -9999.0 signals corrupt values.
+            # FIXME: Sometimes width=0 is returned. ~ Meaning?
+            if feature.startswith('width') and val.magnitude <= 0:
+                return {}
+            sd_values[feature] = val
+        return sd_values
 
     def _get_sd_value(self, element_name, param_name):
-        """Read a single SD value into a dictionary."""
-        element_name = re.sub(':\d+$', '', element_name)
+        """Return a single SD value (with unit)."""
+        element_name = strip_element_suffix(element_name)
         element_name = strip_prefix(element_name, 'sd_')
         param_name = param_name
         sd_name = param_name + '_' + element_name
-        return self._dvm.GetFloatValueSD(sd_name.upper())
+        plain_value = self._dvm.GetFloatValueSD(sd_name.upper())
+        # NOTE: Values returned by SD monitors are in millimeter:
+        return plain_value * unit.units.mm
 
-    def iter_sd_monitors(self):
+    def iter_monitors(self):
+        """Iterate SD monitor elements (element dicts) in current sequence."""
         for element in self._segman.elements:
-            if not element['name'].lower().startswith('sd_'):
-                continue
-            if not element['type'].lower().endswith('monitor'):
-                continue
-            yield element
+            if element['type'].lower().endswith('monitor'):
+                yield element
+
+    def load_dvm_parameter_list(self):
+        """Show a FileDialog to import a new DVM parameter list."""
+        dlg = wx.FileDialog(
+            self._frame,
+            "Load DVM-Parameter list. The CSV file must be ';' separated and 'utf-8' encoded.",
+            wildcard="CSV files (*.csv)|*.csv",
+            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
+        if dlg.ShowModal() != wx.ID_OK:
+            return
+        filename = dlg.GetPath()
+        # TODO: let user choose the correct delimiter/encoding settings
+        try:
+            parlist = DVM_ParameterList.from_csv(filename, 'utf-8')
+        except UnicodeDecodeError:
+            wx.MessageBox('I can only load UTF-8 encoded files!',
+                          'UnicodeDecodeError',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+        else:
+            self.set_dvm_parameter_list(parlist)
+
+    def set_dvm_parameter_list(self, parlist):
+        """Use specified DVM_ParameterList."""
+        self._dvm_params = dicti(parlist._data)
+        if self._testing:
+            self._dvm._lib._use_dvm_parameter_examples(
+                chain.from_iterable(self._dvm_params.values()))
