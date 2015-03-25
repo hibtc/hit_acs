@@ -23,8 +23,8 @@ class SelectDialog(ModalDialog):
     _min_size = wx.Size(400, 300)
     _headline = 'Select desired items:'
 
-    # TODO: allow to customize selection
-    # TODO: use virtual item view?
+    # TODO: allow to customize initial selection
+    # FIXME: select-all looks ugly, check/uncheck-each is tedious...
 
     def SetData(self, data):
         self.data = data
