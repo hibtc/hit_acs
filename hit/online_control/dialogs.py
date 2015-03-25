@@ -4,22 +4,14 @@ Dialog for selecting DVM parameters to be synchronized.
 
 from __future__ import absolute_import
 
-from collections import namedtuple
 from functools import partial
 
 from cpymad.util import strip_element_suffix
 
 from madgui.core import wx
-from madgui.widget.listview import CheckListCtrl
+from madgui.widget.listview import ManagedListCtrl, ColumnInfo
 from madgui.widget.input import ModalDialog
 from madgui.util.unit import format_quantity, tounit
-
-
-ColumnInfo = namedtuple('ColumnInfo', [
-    'title',
-    'formatter',
-    'format',
-])
 
 
 class SelectDialog(ModalDialog):
@@ -36,19 +28,15 @@ class SelectDialog(ModalDialog):
 
     def SetData(self, data):
         self.data = data
-        self.selected_indices = set(range(len(data)))
+        self.selected_indices = list(range(len(data)))
         self.selected = data
 
     def CreateContentArea(self):
         """Create sizer with content area, i.e. input fields."""
-        grid = CheckListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
+        grid = ManagedListCtrl(self, self.GetColumns(), style=0)
         grid.SetMinSize(self._min_size)
         self._grid = grid
         # create columns
-        self._columns = list(self.GetColumns())
-        for index, col_info in enumerate(self._columns):
-            col_title, col_formatter, col_format = col_info
-            grid.InsertColumn(index, col_title, col_format, wx.LIST_AUTOSIZE)
         # other layout
         headline = wx.StaticText(self, label=self._headline)
         inner = wx.BoxSizer(wx.HORIZONTAL)
@@ -59,21 +47,13 @@ class SelectDialog(ModalDialog):
         return outer
 
     def TransferDataToWindow(self):
-        grid = self._grid
-        for index, item in enumerate(self.data):
-            labels = [col_info.formatter(item)
-                      for col_info in self._columns]
-            grid.InsertStringItem(index, labels[0])
-            for col, label in enumerate(labels[1:]):
-                grid.SetStringItem(index, col+1, label)
-            grid.CheckItem(index, index in self.selected_indices)
-        for index in range(len(self._columns)):
-            grid.SetColumnWidth(index, wx.LIST_AUTOSIZE)
+        self._grid.items = self.data
+        for idx in range(len(self.data)):
+            self._grid.Select(idx)
 
     def TransferDataFromWindow(self):
-        self.selected_indices = {index for index in range(len(self.data))
-                                 if self._grid.IsChecked(index)}
-        self.selected = [self.data[index] for index in self.selected_indices]
+        self.selected_indices = list(self._grid.selected_indices)
+        self.selected = list(self._grid.selected_items)
 
 
 def format_dvm_value(param, value):
@@ -97,26 +77,29 @@ class SyncParamDialog(SelectDialog):
             ColumnInfo(
                 "Param",
                 self._format_param,
-                wx.LIST_FORMAT_LEFT),
+                wx.LIST_FORMAT_LEFT,
+                wx.LIST_AUTOSIZE),
             ColumnInfo(
                 "DVM value",
                 self._format_dvm_value,
-                wx.LIST_FORMAT_RIGHT),
+                wx.LIST_FORMAT_RIGHT,
+                wx.LIST_AUTOSIZE),
             ColumnInfo(
                 "MAD-X value",
                 self._format_madx_value,
-                wx.LIST_FORMAT_RIGHT),
+                wx.LIST_FORMAT_RIGHT,
+                wx.LIST_AUTOSIZE),
         ]
 
-    def _format_param(self, item):
+    def _format_param(self, index, item):
         param, dvm_value = item
         return param.dvm_name
 
-    def _format_dvm_value(self, item):
+    def _format_dvm_value(self, index, item):
         param, dvm_value = item
         return format_dvm_value(param, dvm_value)
 
-    def _format_madx_value(self, item):
+    def _format_madx_value(self, index, item):
         param, dvm_value = item
         mad_value = param.madx2dvm(param.mad_value)
         return format_dvm_value(param, mad_value)
@@ -135,30 +118,35 @@ class MonitorDialog(SelectDialog):
             ColumnInfo(
                 "Monitor",
                 self._format_monitor_name,
-                wx.LIST_FORMAT_LEFT),
+                wx.LIST_FORMAT_LEFT,
+                wx.LIST_AUTOSIZE),
             ColumnInfo(
                 "x",
                 partial(self._format_sd_value, 'posx'),
-                wx.LIST_FORMAT_RIGHT),
+                wx.LIST_FORMAT_RIGHT,
+                wx.LIST_AUTOSIZE),
             ColumnInfo(
                 "y",
                 partial(self._format_sd_value, 'posy'),
-                wx.LIST_FORMAT_RIGHT),
+                wx.LIST_FORMAT_RIGHT,
+                wx.LIST_AUTOSIZE),
             ColumnInfo(
                 "x width",
                 partial(self._format_sd_value, 'widthx'),
-                wx.LIST_FORMAT_RIGHT),
+                wx.LIST_FORMAT_RIGHT,
+                wx.LIST_AUTOSIZE),
             ColumnInfo(
                 "y width",
                 partial(self._format_sd_value, 'widthy'),
-                wx.LIST_FORMAT_RIGHT),
+                wx.LIST_FORMAT_RIGHT,
+                wx.LIST_AUTOSIZE),
         ]
 
-    def _format_monitor_name(self, item):
+    def _format_monitor_name(self, index, item):
         elem, values = item
         return strip_element_suffix(elem['name'])
 
-    def _format_sd_value(self, name, item):
+    def _format_sd_value(self, name, index, item):
         elem, values = item
         value = values.get(name)
         if value is None:
