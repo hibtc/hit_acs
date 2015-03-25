@@ -4,6 +4,7 @@ Stub class for BeamOptikDLL.dll ctypes proxy objects as used by
 offline testing of the basic functionality.
 """
 
+from itertools import chain
 import functools
 from ctypes import c_char_p
 
@@ -79,6 +80,9 @@ class BeamOptikDllProxy(object):
 
         :param list dvm_params: list of :class:`DVM_Parameter`
         """
+        # support a 'dvm_params_map' {element name: [DVM_Parameter]}:
+        if isinstance(dvm_params, dict):
+            dvm_params = chain.from_iterable(dvm_params.values())
         self.data['control'] = dicti(
             (param.name, _get_param_example_value(param))
             for param in dvm_params

@@ -130,7 +130,18 @@ class BeamOptikDLL(object):
         try:
             return cls(ctypes.windll.LoadLibrary(filename))
         except AttributeError:
-            raise OSError
+            raise OSError("BeamOptikDLL.dll only available on windows.")
+
+    @classmethod
+    def check_library(cls):
+        """Check if library is available."""
+        try:
+            ctypes.windll
+        except AttributeError:
+            # Not available for Linux:
+            return False
+        # TODO: try to find DLL, return False if not in PATH
+        return True
 
     def DisableMessageBoxes(self):
         """

@@ -4,12 +4,14 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 
 from __future__ import absolute_import
 
-from itertools import chain
+import sys
+import traceback
 
 from pydicti import dicti
 
 from cpymad.util import strip_element_suffix
 from madgui.core import wx
+from madgui.core.plugin import HookCollection
 from madgui.util import unit
 from madgui.widget import menu
 
@@ -18,6 +20,7 @@ from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
 from .dialogs import SyncParamDialog
+from .stub import BeamOptikDllProxy
 
 
 # TODO: catch exceptions and display error messages
@@ -44,7 +47,6 @@ class Plugin(object):
     """
 
     _BeamOptikDLL = BeamOptikDLL
-    _testing = False
 
     def __init__(self, frame, menubar):
         """
@@ -55,7 +57,11 @@ class Plugin(object):
         database. This works only if the corresponding parameters were named
         exactly as in the database and are assigned with the ":=" operator.
         """
-        # TODO: don't show menuitem if the .dll is not available?
+        if not (self._check_dll() or self._check_stub()):
+            # Can't connect, so no point in showing anything.
+            return
+        self.hook = HookCollection(
+            on_loaded_dvm_params=None)
         self._frame = frame
         self._dvm = None
         self._config = load_config()
@@ -65,15 +71,35 @@ class Plugin(object):
         submenu = self.create_menu()
         menu.extend(frame, menubar, [submenu])
 
+    def _check_dll(self):
+        """Check if the 'Connect' menu item should be shown."""
+        return self._BeamOptikDLL.check_library()
+
+    def _check_stub(self):
+        """Check if the 'Connect &test stub' menu item should be shown."""
+        # TODO: check for debug mode?
+        return True
+
     def create_menu(self):
         """Create menu."""
         Item = menu.CondItem
         Separator = menu.Separator
-        return menu.Menu('&Online control', [
-            Item('&Connect',
-                 'Connect online control interface',
-                 self.connect,
-                 self.is_disconnected),
+        items = []
+        if self._check_dll():
+            items += [
+                Item('&Connect',
+                     'Connect online control interface',
+                     self.load_and_connect,
+                     self.is_disconnected),
+            ]
+        if self._check_stub():
+            items += [
+                Item('Connect &test stub',
+                     'Connect a stub version (for offline testing)',
+                     self.load_and_connect_stub,
+                     self.is_disconnected),
+            ]
+        items += [
             Item('&Disconnect',
                  'Disconnect online control interface',
                  self.disconnect,
@@ -102,7 +128,8 @@ class Plugin(object):
                  'Load list of DVM parameters',
                  self.load_dvm_parameter_list,
                  self.is_connected),
-        ])
+        ]
+        return menu.Menu('&Online control', items)
 
     def is_connected(self):
         """Check if online control is connected."""
@@ -116,18 +143,30 @@ class Plugin(object):
         """Check if online control is connected and a sequence is loaded."""
         return self.connected and bool(self._segman)
 
-    def connect(self):
+    def load_and_connect(self):
         """Connect to online database."""
         try:
             self._dvm = self._BeamOptikDLL.load_library()
         except OSError:
-            # TODO: Loading the stub should be controlled via a MadGUI command
-            # line option, and not be specific to linux.
-            from . import stub
-            logger = self._frame.getLogger('hit.online_control.stub')
-            proxy = stub.BeamOptikDllProxy({}, logger)
-            self._dvm = self._BeamOptikDLL(proxy)
-            self._testing = True
+            exc_str = traceback.format_exception_only(*sys.exc_info()[:2])
+            wx.MessageBox("".join(exc_str),
+                          'Failed to load DVM module',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+            return
+        self._connect()
+
+    def load_and_connect_stub(self):
+        """Connect a stub BeamOptikDLL (for offline testing)."""
+        logger = self._frame.getLogger('hit.online_control.stub')
+        proxy = BeamOptikDllProxy({}, logger)
+        self.hook.on_loaded_dvm_params.connect(
+            proxy._use_dvm_parameter_examples)
+        self._dvm = self._BeamOptikDLL(proxy)
+        self._connect()
+
+    def _connect(self):
+        """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
         self._frame.env['dvm'] = self._dvm
 
@@ -361,6 +400,4 @@ class Plugin(object):
     def set_dvm_parameter_list(self, parlist):
         """Use specified DVM_ParameterList."""
         self._dvm_params = dicti(parlist._data)
-        if self._testing:
-            self._dvm._lib._use_dvm_parameter_examples(
-                chain.from_iterable(self._dvm_params.values()))
+        self.hook.on_loaded_dvm_params(self._dvm_params)
