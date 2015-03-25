@@ -65,7 +65,7 @@ class Plugin(object):
         self._frame = frame
         self._dvm = None
         self._config = load_config()
-        self._dvm_params = None
+        self._dvm_params = {}
         units = unit.from_config_dict(self._config['units'])
         self._utool = unit.UnitConverter(units)
         submenu = self.create_menu()
@@ -241,7 +241,7 @@ class Plugin(object):
     def read_all(self):
         """Read all parameters from the online database."""
         # TODO: cache and reuse 'active' flag for each parameter
-        rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
+        rows = [(param, self.get_value(param.dvm_symb, param.dvm_name))
                 for param in self.iter_readable_dvm_params()]
         if not rows:
             wx.MessageBox('There are no readable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
@@ -251,6 +251,7 @@ class Plugin(object):
             return
         dlg = SyncParamDialog(self._frame,
                               'Import parameters from DVM',
+                              headline='Import selected DVM parameters.',
                               data=rows)
         if dlg.ShowModal() == wx.ID_OK:
             self.read_these(dlg.selected)
@@ -275,7 +276,7 @@ class Plugin(object):
 
     def write_all(self):
         """Write all parameters to the online database."""
-        rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
+        rows = [(param, self.get_value(param.dvm_symb, param.dvm_name))
                 for param in self.iter_writable_dvm_params()]
         if not rows:
             wx.MessageBox('There are no writable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
@@ -285,6 +286,7 @@ class Plugin(object):
             return
         dlg = SyncParamDialog(self._frame,
                               'Set values in DVM from current sequence',
+                              headline='Overwrite selected DVM parameters.',
                               data=rows)
         if dlg.ShowModal() == wx.ID_OK:
             self.write_these(par for par, _ in dlg.selected)
@@ -330,8 +332,7 @@ class Plugin(object):
     def read_all_sd_values(self):
         """Read out SD values (beam position/envelope)."""
         # TODO: cache list of used SD monitors
-        rows = [(True, elem, values)
-                for elem, values in self.iter_sd_values()]
+        rows = list(self.iter_sd_values())
         if not rows:
             wx.MessageBox('There are no usable SD monitors in the current sequence.',
                           'No usable monitors available',

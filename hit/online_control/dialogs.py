@@ -4,6 +4,9 @@ Dialog for selecting DVM parameters to be synchronized.
 
 from __future__ import absolute_import
 
+from collections import namedtuple
+from functools import partial
+
 from cpymad.util import strip_element_suffix
 
 from madgui.core import wx
@@ -12,211 +15,152 @@ from madgui.widget.input import ModalDialog
 from madgui.util.unit import format_quantity, tounit
 
 
-# TODO: fight the redundancy!
+ColumnInfo = namedtuple('ColumnInfo', [
+    'title',
+    'formatter',
+    'format',
+])
 
 
-class SyncParamDialog(ModalDialog):
+class SelectDialog(ModalDialog):
+
+    """
+    Dialog for selecting from an immutable list of items.
+    """
+
+    _min_size = wx.Size(400, 300)
+    _headline = 'Select desired items:'
+
+    # TODO: allow to customize selection
+    # TODO: use virtual item view?
+
+    def SetData(self, data):
+        self.data = data
+        self.selected_indices = set(range(len(data)))
+        self.selected = data
+
+    def CreateContentArea(self):
+        """Create sizer with content area, i.e. input fields."""
+        grid = CheckListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
+        grid.SetMinSize(self._min_size)
+        self._grid = grid
+        # create columns
+        self._columns = list(self.GetColumns())
+        for index, col_info in enumerate(self._columns):
+            col_title, col_formatter, col_format = col_info
+            grid.InsertColumn(index, col_title, col_format, wx.LIST_AUTOSIZE)
+        # other layout
+        headline = wx.StaticText(self, label=self._headline)
+        inner = wx.BoxSizer(wx.HORIZONTAL)
+        inner.Add(grid, 1, flag=wx.ALL|wx.EXPAND, border=5)
+        outer = wx.BoxSizer(wx.VERTICAL)
+        outer.Add(headline, flag=wx.ALL|wx.ALIGN_LEFT, border=5)
+        outer.Add(inner, 1, flag=wx.ALL|wx.EXPAND, border=5)
+        return outer
+
+    def TransferDataToWindow(self):
+        grid = self._grid
+        for index, item in enumerate(self.data):
+            labels = [col_info.formatter(item)
+                      for col_info in self._columns]
+            grid.InsertStringItem(index, labels[0])
+            for col, label in enumerate(labels[1:]):
+                grid.SetStringItem(index, col+1, label)
+            grid.CheckItem(index, index in self.selected_indices)
+        for index in range(len(self._columns)):
+            grid.SetColumnWidth(index, wx.LIST_AUTOSIZE)
+
+    def TransferDataFromWindow(self):
+        self.selected_indices = {index for index in range(len(self.data))
+                                 if self._grid.IsChecked(index)}
+        self.selected = [self.data[index] for index in self.selected_indices]
+
+
+def format_dvm_value(param, value):
+    value = tounit(value, param.dvm_param.ui_unit)
+    fmt_code = '.{}f'.format(param.dvm_param.ui_prec)
+    return format_quantity(value, fmt_code)
+
+
+class SyncParamDialog(SelectDialog):
 
     """
     Dialog for selecting DVM parameters to be synchronized.
     """
 
-    def SetData(self, data):
-        self.data = data
-        self._rows = []
-        self._inserting = False
-        self.selected = []
+    def __init__(self, *args, **kwargs):
+        self._headline = kwargs.pop('headline')
+        super(SyncParamDialog, self).__init__(*args, **kwargs)
 
-    def CreateContentArea(self):
-
-        """Create sizer with content area, i.e. input fields."""
-
-        grid = CheckListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
-        grid._OnCheckItem = self.OnChangeActive
-        grid.SetMinSize(wx.Size(400, 300))
-        self._grid = grid
-
-        grid.InsertColumn(
-            0, "Param",
-            format=wx.LIST_FORMAT_LEFT,
-            width=wx.LIST_AUTOSIZE)
-        grid.InsertColumn(
-            1, "DVM value",
-            format=wx.LIST_FORMAT_RIGHT,
-            width=wx.LIST_AUTOSIZE)
-        grid.InsertColumn(
-            2, "MAD-X value",
-            format=wx.LIST_FORMAT_RIGHT,
-            width=wx.LIST_AUTOSIZE)
-
-        headline = wx.StaticText(self, label="DVM parameters:")
-
-        inner = wx.BoxSizer(wx.HORIZONTAL)
-        inner.Add(grid, 1, flag=wx.ALL|wx.EXPAND, border=5)
-
-        outer = wx.BoxSizer(wx.VERTICAL)
-        outer.Add(headline, flag=wx.ALL|wx.ALIGN_LEFT, border=5)
-        outer.Add(inner, 1, flag=wx.ALL|wx.EXPAND, border=5)
-
-        return outer
-
-    def OnChangeActive(self, row, active):
-        if self._inserting:
-            return
-        _, param, dvm_value = self._rows[row]
-        self._rows[row] = active, param, dvm_value
-
-    def TransferDataToWindow(self):
-        for active, param, dvm_value in self.data:
-            self.AddRow(active, param, dvm_value)
-
-    def TransferDataFromWindow(self):
-        self.data = list(self._rows)
-        self.selected = [
-            (param, dvm_value)
-            for active, param, dvm_value in self.data
-            if active
+    def GetColumns(self):
+        return [
+            ColumnInfo(
+                "Param",
+                self._format_param,
+                wx.LIST_FORMAT_LEFT),
+            ColumnInfo(
+                "DVM value",
+                self._format_dvm_value,
+                wx.LIST_FORMAT_RIGHT),
+            ColumnInfo(
+                "MAD-X value",
+                self._format_madx_value,
+                wx.LIST_FORMAT_RIGHT),
         ]
 
-    def format_value(self, param, value):
-        value = tounit(value, param.dvm_param.ui_unit)
-        fmt_code = '.{}f'.format(param.dvm_param.ui_prec)
-        return format_quantity(value, fmt_code)
+    def _format_param(self, item):
+        param, dvm_value = item
+        return param.dvm_name
 
-    def AddRow(self, active, param, dvm_value):
+    def _format_dvm_value(self, item):
+        param, dvm_value = item
+        return format_dvm_value(param, dvm_value)
 
-        """
-        Add one row to the list of TWISS initial conditions.
-        """
-
-        grid = self._grid
-
-        # insert elements
-        self._inserting = True
-        index = grid.GetItemCount()
-
+    def _format_madx_value(self, item):
+        param, dvm_value = item
         mad_value = param.madx2dvm(param.mad_value)
-
-        grid.InsertStringItem(index, param.dvm_name)
-        grid.SetStringItem(index, 1, self.format_value(param, dvm_value))
-        grid.SetStringItem(index, 2, self.format_value(param, mad_value))
-        grid.CheckItem(index, active)
-
-        grid.SetColumnWidth(0, wx.LIST_AUTOSIZE)
-        grid.SetColumnWidth(1, wx.LIST_AUTOSIZE)
-        grid.SetColumnWidth(2, wx.LIST_AUTOSIZE)
-
-        # update stored data
-        self._rows.insert(index, (active, param, dvm_value))
-        self._inserting = False
-
-        return index
+        return format_dvm_value(param, mad_value)
 
 
-class MonitorDialog(ModalDialog):
+class MonitorDialog(SelectDialog):
 
     """
     Dialog for selecting SD monitor values to be imported.
     """
 
-    def SetData(self, data):
-        self.data = data
-        self._rows = []
-        self._inserting = False
-        self.selected = []
+    _headline = "Import selected monitor measurements:"
 
-    def CreateContentArea(self):
-
-        """Create sizer with content area, i.e. input fields."""
-
-        grid = CheckListCtrl(self, style=wx.LC_REPORT|wx.LC_SINGLE_SEL)
-        grid._OnCheckItem = self.OnChangeActive
-        grid.SetMinSize(wx.Size(400, 300))
-        self._grid = grid
-
-        grid.InsertColumn(
-            0, "Monitor",
-            format=wx.LIST_FORMAT_LEFT,
-            width=wx.LIST_AUTOSIZE)
-        grid.InsertColumn(
-            1, u"x",
-            format=wx.LIST_FORMAT_RIGHT,
-            width=wx.LIST_AUTOSIZE)
-        grid.InsertColumn(
-            2, u"y",
-            format=wx.LIST_FORMAT_RIGHT,
-            width=wx.LIST_AUTOSIZE)
-        grid.InsertColumn(
-            3, u"x width",
-            format=wx.LIST_FORMAT_RIGHT,
-            width=wx.LIST_AUTOSIZE)
-        grid.InsertColumn(
-            4, u"y width",
-            format=wx.LIST_FORMAT_RIGHT,
-            width=wx.LIST_AUTOSIZE)
-
-        headline = wx.StaticText(self, label="Monitor measurements:")
-
-        inner = wx.BoxSizer(wx.HORIZONTAL)
-        inner.Add(grid, 1, flag=wx.ALL|wx.EXPAND, border=5)
-
-        outer = wx.BoxSizer(wx.VERTICAL)
-        outer.Add(headline, flag=wx.ALL|wx.ALIGN_LEFT, border=5)
-        outer.Add(inner, 1, flag=wx.ALL|wx.EXPAND, border=5)
-
-        return outer
-
-    def OnChangeActive(self, row, active):
-        if self._inserting:
-            return
-        _, elem, values = self._rows[row]
-        self._rows[row] = active, elem, values
-
-    def TransferDataToWindow(self):
-        for active, elem, values in self.data:
-            self.AddRow(active, elem, values)
-
-    def TransferDataFromWindow(self):
-        self.data = list(self._rows)
-        self.selected = [
-            (elem, values)
-            for active, elem, values in self.data
-            if active
+    def GetColumns(self):
+        return [
+            ColumnInfo(
+                "Monitor",
+                self._format_monitor_name,
+                wx.LIST_FORMAT_LEFT),
+            ColumnInfo(
+                "x",
+                partial(self._format_sd_value, 'posx'),
+                wx.LIST_FORMAT_RIGHT),
+            ColumnInfo(
+                "y",
+                partial(self._format_sd_value, 'posy'),
+                wx.LIST_FORMAT_RIGHT),
+            ColumnInfo(
+                "x width",
+                partial(self._format_sd_value, 'widthx'),
+                wx.LIST_FORMAT_RIGHT),
+            ColumnInfo(
+                "y width",
+                partial(self._format_sd_value, 'widthy'),
+                wx.LIST_FORMAT_RIGHT),
         ]
 
-    def AddRow(self, active, elem, values):
+    def _format_monitor_name(self, item):
+        elem, values = item
+        return strip_element_suffix(elem['name'])
 
-        """
-        Add one row to the list of TWISS initial conditions.
-        """
-
-        grid = self._grid
-
-        # insert elements
-        self._inserting = True
-        index = grid.GetItemCount()
-
-        grid.InsertStringItem(index, strip_element_suffix(elem['name']))
-
-        def set_string(col, val):
-            if val is not None:
-                grid.SetStringItem(index, col, format_quantity(val))
-
-        set_string(1, values.get('posx'))
-        set_string(2, values.get('posy'))
-        set_string(3, values.get('widthx'))
-        set_string(4, values.get('widthy'))
-
-        grid.SetColumnWidth(0, wx.LIST_AUTOSIZE)
-        grid.SetColumnWidth(1, wx.LIST_AUTOSIZE)
-        grid.SetColumnWidth(2, wx.LIST_AUTOSIZE)
-        grid.SetColumnWidth(3, wx.LIST_AUTOSIZE)
-        grid.SetColumnWidth(4, wx.LIST_AUTOSIZE)
-
-        grid.CheckItem(index, active)
-
-        # update stored data
-        self._rows.insert(index, (active, elem, values))
-        self._inserting = False
-
-        return index
+    def _format_sd_value(self, name, item):
+        elem, values = item
+        value = values.get(name)
+        if value is None:
+            return ''
+        return format_quantity(value)
