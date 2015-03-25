@@ -325,20 +325,20 @@ class Plugin(object):
         """Read out SD values (beam position/envelope)."""
         segman = self._segman
         for elem in self.iter_monitors():
-            sd_values = self.get_sd_values(elem['name'])
-            if not sd_values:
+            values = self.get_sd_values(elem['name'])
+            if not values:
                 continue
             twiss_initial = {}
             ex = segman.beam['ex']
             ey = segman.beam['ey']
-            if 'widthx' in sd_values:
-                twiss_initial['betx'] = sd_values['widthx'] ** 2 / ex
-            if 'widthy' in sd_values:
-                twiss_initial['bety'] = sd_values['widthy'] ** 2 / ey
-            if 'posx' in sd_values:
-                twiss_initial['x'] = sd_values['posx']
-            if 'posy' in sd_values:
-                twiss_initial['y'] = sd_values['posy']
+            if 'widthx' in values:
+                twiss_initial['betx'] = values['widthx'] ** 2 / ex
+            if 'widthy' in values:
+                twiss_initial['bety'] = values['widthy'] ** 2 / ey
+            if 'posx' in values:
+                twiss_initial['x'] = values['posx']
+            if 'posy' in values:
+                twiss_initial['y'] = values['posy']
             twiss_initial['mixin'] = True
             segman.set_twiss_initial(
                 segman.get_element_info(elem['name']),
@@ -346,7 +346,7 @@ class Plugin(object):
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
-        sd_values = {}
+        values = {}
         for feature in ('widthx', 'widthy', 'posx', 'posy'):
             # TODO: Handle usability of parameters individually
             try:
@@ -357,8 +357,8 @@ class Plugin(object):
             # FIXME: Sometimes width=0 is returned. ~ Meaning?
             if feature.startswith('width') and val.magnitude <= 0:
                 return {}
-            sd_values[feature] = val
-        return sd_values
+            values[feature] = val
+        return values
 
     def _get_sd_value(self, element_name, param_name):
         """Return a single SD value (with unit)."""
