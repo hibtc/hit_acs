@@ -172,7 +172,9 @@ class BeamOptikDllProxy(object):
     def GetFloatValueSD(self, iid, name, value, options):
         """Get beam diagnostic value."""
         assert self.instances[iid.value]
-        value.value = self.data['diagnostic'][name]
+        # TODO: use list of known monitors (data['diagnostic'])
+        value.value = 1.0
+        # value.value = self.data['diagnostic'][name]
 
     @_api_meth
     def GetLastFloatValueSD(self, iid,

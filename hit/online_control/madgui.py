@@ -19,7 +19,7 @@ from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
-from .dialogs import SyncParamDialog
+from .dialogs import SyncParamDialog, MonitorDialog
 from .stub import BeamOptikDllProxy
 
 
@@ -275,7 +275,6 @@ class Plugin(object):
 
     def write_all(self):
         """Write all parameters to the online database."""
-
         rows = [(True, param, self.get_value(param.dvm_symb, param.dvm_name))
                 for param in self.iter_writable_dvm_params()]
         if not rows:
@@ -321,44 +320,69 @@ class Plugin(object):
         """Execute changes (commits prioir set_value operations)."""
         self._dvm.ExecuteChanges(options)
 
+    def iter_sd_values(self):
+        """Yields (element, values) tuples for usable monitors."""
+        for elem in self.iter_monitors():
+            values = self.get_sd_values(elem['name'])
+            if values:
+                yield (elem, values)
+
     def read_all_sd_values(self):
         """Read out SD values (beam position/envelope)."""
+        # TODO: cache list of used SD monitors
+        rows = [(True, elem, values)
+                for elem, values in self.iter_sd_values()]
+        if not rows:
+            wx.MessageBox('There are no usable SD monitors in the current sequence.',
+                          'No usable monitors available',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+            return
+        dlg = MonitorDialog(self._frame,
+                            'Set values in DVM from current sequence',
+                            data=rows)
+        if dlg.ShowModal() == wx.ID_OK:
+            self.use_these_sd_values(dlg.selected)
+
+    def use_these_sd_values(self, monitor_values):
         segman = self._segman
-        for elem in self.iter_monitors():
-            sd_values = self.get_sd_values(elem['name'])
-            if not sd_values:
-                continue
+        utool = segman.simulator.utool
+        all_twiss = segman.twiss_initial.copy()
+        for elem, values in monitor_values:
             twiss_initial = {}
             ex = segman.beam['ex']
             ey = segman.beam['ey']
-            if 'widthx' in sd_values:
-                twiss_initial['betx'] = sd_values['widthx'] ** 2 / ex
-            if 'widthy' in sd_values:
-                twiss_initial['bety'] = sd_values['widthy'] ** 2 / ey
-            if 'posx' in sd_values:
-                twiss_initial['x'] = sd_values['posx']
-            if 'posy' in sd_values:
-                twiss_initial['y'] = sd_values['posy']
+            if 'widthx' in values:
+                twiss_initial['betx'] = values['widthx'] ** 2 / ex
+            if 'widthy' in values:
+                twiss_initial['bety'] = values['widthy'] ** 2 / ey
+            if 'posx' in values:
+                twiss_initial['x'] = values['posx']
+            if 'posy' in values:
+                twiss_initial['y'] = values['posy']
             twiss_initial['mixin'] = True
-            segman.set_twiss_initial(
-                segman.get_element_info(elem['name']),
-                self._utool.dict_add_unit(twiss_initial))
+            twiss_initial = utool.dict_normalize_unit(twiss_initial)
+            element_info = segman.get_element_info(elem['name'])
+            all_twiss[element_info.index] = twiss_initial
+        segman.set_all(all_twiss)
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
-        sd_values = {}
+        values = {}
         for feature in ('widthx', 'widthy', 'posx', 'posy'):
             # TODO: Handle usability of parameters individually
             try:
                 val = self._get_sd_value(element_name, feature)
             except RuntimeError:
                 return {}
+            # TODO: move sanity check to later, so values will simply be
+            # unchecked/grayed out, instead of removed completely
             # The magic number -9999.0 signals corrupt values.
             # FIXME: Sometimes width=0 is returned. ~ Meaning?
             if feature.startswith('width') and val.magnitude <= 0:
                 return {}
-            sd_values[feature] = val
-        return sd_values
+            values[feature] = val
+        return values
 
     def _get_sd_value(self, element_name, param_name):
         """Return a single SD value (with unit)."""
