@@ -4,7 +4,6 @@ Plugin that integrates a beamoptikdll UI into MadGUI.
 
 from __future__ import absolute_import
 
-from itertools import chain
 import sys
 import traceback
 
@@ -12,6 +11,7 @@ from pydicti import dicti
 
 from cpymad.util import strip_element_suffix
 from madgui.core import wx
+from madgui.core.plugin import HookCollection
 from madgui.util import unit
 from madgui.widget import menu
 
@@ -46,7 +46,6 @@ class Plugin(object):
     """
 
     _BeamOptikDLL = BeamOptikDLL
-    _testing = False
 
     def __init__(self, frame, menubar):
         """
@@ -60,6 +59,8 @@ class Plugin(object):
         if not (self._check_dll() or self._check_stub()):
             # Can't connect, so no point in showing anything.
             return
+        self.hook = HookCollection(
+            on_loaded_dvm_params=None)
         self._frame = frame
         self._dvm = None
         self._config = load_config()
@@ -158,8 +159,9 @@ class Plugin(object):
         """Connect a stub BeamOptikDLL (for offline testing)."""
         logger = self._frame.getLogger('hit.online_control.stub')
         proxy = BeamOptikDllProxy({}, logger)
+        self.hook.on_loaded_dvm_params.connect(
+            proxy._use_dvm_parameter_examples)
         self._dvm = self._BeamOptikDLL(proxy)
-        self._testing = True
         self._connect()
 
     def _connect(self):
@@ -397,6 +399,4 @@ class Plugin(object):
     def set_dvm_parameter_list(self, parlist):
         """Use specified DVM_ParameterList."""
         self._dvm_params = dicti(parlist._data)
-        if self._testing:
-            self._dvm._lib._use_dvm_parameter_examples(
-                chain.from_iterable(self._dvm_params.values()))
+        self.hook.on_loaded_dvm_params(self._dvm_params)
