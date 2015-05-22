@@ -14,12 +14,13 @@ from madgui.core import wx
 from madgui.core.plugin import HookCollection
 from madgui.util import unit
 from madgui.widget import menu
+from madgui.widget.input import Cancellable, Dialog
 
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
-from .dialogs import SyncParamDialog, MonitorDialog
+from .dialogs import ImportParamWidget, ExportParamWidget, MonitorWidget
 from .stub import BeamOptikDllProxy
 
 
@@ -238,6 +239,7 @@ class Plugin(object):
         return (p for p in self.iter_convertible_dvm_params()
                 if p.dvm_param.write)
 
+    @Cancellable
     def read_all(self):
         """Read all parameters from the online database."""
         # TODO: cache and reuse 'active' flag for each parameter
@@ -249,12 +251,9 @@ class Plugin(object):
                           wx.ICON_ERROR|wx.OK,
                           parent=self._frame)
             return
-        dlg = SyncParamDialog(self._frame,
-                              'Import parameters from DVM',
-                              headline='Import selected DVM parameters.',
-                              data=rows)
-        if dlg.ShowModal() == wx.ID_OK:
-            self.read_these(dlg.selected)
+        with Dialog(self._frame) as dialog:
+            selected = ImportParamWidget(dialog).Query(rows)
+        self.read_these(selected)
 
     def read_these(self, params):
         """
@@ -263,8 +262,8 @@ class Plugin(object):
         :param list params: List of tuples (ParamConverterBase, dvm_value)
         """
         segman = self._segman
-        madx = segman.simulator.madx
-        strip_unit = segman.simulator.utool.strip_unit
+        madx = segman.session.madx
+        strip_unit = segman.session.utool.strip_unit
         for param, dvm_value in params:
             mad_value = param.dvm2madx(dvm_value)
             plain_value = strip_unit(param.mad_symb, mad_value)
@@ -274,6 +273,7 @@ class Plugin(object):
         for segment in segman.segments.values():
             segment.twiss()
 
+    @Cancellable
     def write_all(self):
         """Write all parameters to the online database."""
         rows = [(param, self.get_value(param.dvm_symb, param.dvm_name))
@@ -284,12 +284,9 @@ class Plugin(object):
                           wx.ICON_ERROR|wx.OK,
                           parent=self._frame)
             return
-        dlg = SyncParamDialog(self._frame,
-                              'Set values in DVM from current sequence',
-                              headline='Overwrite selected DVM parameters.',
-                              data=rows)
-        if dlg.ShowModal() == wx.ID_OK:
-            self.write_these(par for par, _ in dlg.selected)
+        with Dialog(self._frame) as dialog:
+            selected = ExportParamWidget(dialog).Query(rows)
+        self.write_these(par for par, _ in selected)
 
     def write_these(self, params):
         """
@@ -329,6 +326,7 @@ class Plugin(object):
             if values:
                 yield (elem, values)
 
+    @Cancellable
     def read_all_sd_values(self):
         """Read out SD values (beam position/envelope)."""
         # TODO: cache list of used SD monitors
@@ -339,15 +337,13 @@ class Plugin(object):
                           wx.ICON_ERROR|wx.OK,
                           parent=self._frame)
             return
-        dlg = MonitorDialog(self._frame,
-                            'Set values in DVM from current sequence',
-                            data=rows)
-        if dlg.ShowModal() == wx.ID_OK:
-            self.use_these_sd_values(dlg.selected)
+        with Dialog(self._frame) as dialog:
+            selected = MonitorWidget(dialog).Query(rows)
+        self.use_these_sd_values(selected)
 
     def use_these_sd_values(self, monitor_values):
         segman = self._segman
-        utool = segman.simulator.utool
+        utool = segman.session.utool
         all_twiss = segman.twiss_initial.copy()
         for elem, values in monitor_values:
             twiss_initial = {}

@@ -9,15 +9,15 @@ from functools import partial
 from cpymad.util import strip_element_suffix
 
 from madgui.core import wx
-from madgui.widget.listview import ManagedListCtrl, ColumnInfo
-from madgui.widget.input import ModalDialog
+from madgui.widget.listview import ListCtrl, ColumnInfo
+from madgui.widget.input import Widget
 from madgui.util.unit import format_quantity, tounit
 
 
-class SelectDialog(ModalDialog):
+class ListSelectWidget(Widget):
 
     """
-    Dialog for selecting from an immutable list of items.
+    Widget for selecting from an immutable list of items.
     """
 
     _min_size = wx.Size(400, 300)
@@ -26,19 +26,14 @@ class SelectDialog(ModalDialog):
     # TODO: allow to customize initial selection
     # FIXME: select-all looks ugly, check/uncheck-each is tedious...
 
-    def SetData(self, data):
-        self.data = data
-        self.selected_indices = list(range(len(data)))
-        self.selected = data
-
-    def CreateContentArea(self):
+    def CreateControls(self, window):
         """Create sizer with content area, i.e. input fields."""
-        grid = ManagedListCtrl(self, self.GetColumns(), style=0)
+        grid = ListCtrl(window, self.GetColumns(), style=0)
         grid.SetMinSize(self._min_size)
         self._grid = grid
         # create columns
         # other layout
-        headline = wx.StaticText(self, label=self._headline)
+        headline = wx.StaticText(window, label=self._headline)
         inner = wx.BoxSizer(wx.HORIZONTAL)
         inner.Add(grid, 1, flag=wx.ALL|wx.EXPAND, border=5)
         outer = wx.BoxSizer(wx.VERTICAL)
@@ -46,14 +41,14 @@ class SelectDialog(ModalDialog):
         outer.Add(inner, 1, flag=wx.ALL|wx.EXPAND, border=5)
         return outer
 
-    def TransferDataToWindow(self):
-        self._grid.items = self.data
-        for idx in range(len(self.data)):
+    def SetData(self, data):
+        self._grid.items = data
+        # TODO: replace SELECT(ALL) by SELECT(SELECTED)
+        for idx in range(len(data)):
             self._grid.Select(idx)
 
-    def TransferDataFromWindow(self):
-        self.selected_indices = list(self._grid.selected_indices)
-        self.selected = list(self._grid.selected_items)
+    def GetData(self):
+        return list(self._grid.selected_items)
 
 
 def format_dvm_value(param, value):
@@ -62,15 +57,11 @@ def format_dvm_value(param, value):
     return format_quantity(value, fmt_code)
 
 
-class SyncParamDialog(SelectDialog):
+class SyncParamWidget(ListSelectWidget):
 
     """
     Dialog for selecting DVM parameters to be synchronized.
     """
-
-    def __init__(self, *args, **kwargs):
-        self._headline = kwargs.pop('headline')
-        super(SyncParamDialog, self).__init__(*args, **kwargs)
 
     def GetColumns(self):
         return [
@@ -105,11 +96,23 @@ class SyncParamDialog(SelectDialog):
         return format_dvm_value(param, mad_value)
 
 
-class MonitorDialog(SelectDialog):
+class ImportParamWidget(SyncParamWidget):
+    Title = 'Import parameters from DVM'
+    headline = 'Import selected DVM parameters.'
+
+
+class ExportParamWidget(SyncParamWidget):
+    Title = 'Set values in DVM from current sequence'
+    headline = 'Overwrite selected DVM parameters.'
+
+
+class MonitorWidget(ListSelectWidget):
 
     """
     Dialog for selecting SD monitor values to be imported.
     """
+
+    Title = 'Set values in DVM from current sequence'
 
     _headline = "Import selected monitor measurements:"
 
