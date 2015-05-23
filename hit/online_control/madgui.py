@@ -453,6 +453,26 @@ class Plugin(object):
         segment = segman.get_segment(mon)
         segment.twiss_args.update(tw)
         segment.twiss()
+        # align_beam(mon)
+
+    def align_beam(self, vary, elem):
+        # TODO: how to select elements for variation?
+        segman = self._segman
+        madx = segman.simulator.madx
+        segment = segman.get_segment(elem)
+        utool = segman.session.utool
+        constraints = [
+            {'range': elem['name'], 'x': 0},
+            {'range': elem['name'], 'px': 0},
+            {'range': elem['name'], 'y': 0},
+            {'range': elem['name'], 'py': 0},
+        ]
+        segman.simulator.madx.match(
+            sequence=segment.sequence.name,
+            vary=vary,
+            constraints=constraints,
+            twiss_init=utool.dict_strip_unit(segment.twiss_args))
+        segman.hook.update()
 
     def find_initial_position(self, monitor, quadrupole, kl_0, kl_1):
         """
