@@ -10,6 +10,8 @@ import traceback
 from pydicti import dicti
 
 from cpymad.util import strip_element_suffix
+from cpymad.types import Expression
+
 from madgui.core import wx
 from madgui.core.plugin import HookCollection
 from madgui.util import unit
@@ -20,8 +22,11 @@ from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
-from .dialogs import ImportParamWidget, ExportParamWidget, MonitorWidget
+from .dialogs import (ImportParamWidget, ExportParamWidget,
+                      MonitorWidget, OptikVarianzWidget)
 from .stub import BeamOptikDllProxy
+
+
 
 
 # TODO: catch exceptions and display error messages
@@ -123,6 +128,11 @@ class Plugin(object):
             Item('Read &monitors',
                  'Read SD values (beam envelope/position) from monitors',
                  self.read_all_sd_values,
+                 self.has_sequence),
+            Separator,
+            Item('Detect beam &alignment',
+                 'Detect the beam alignment and momentum (Optikvarianz)',
+                 self.on_find_initial_position,
                  self.has_sequence),
             Separator,
             Item('&Load DVM parameter list',
@@ -422,3 +432,103 @@ class Plugin(object):
         """Use specified DVM_ParameterList."""
         self._dvm_params = dicti(parlist._data)
         self.hook.on_loaded_dvm_params(self._dvm_params)
+
+    def sync_from_db(self):
+        params = [(param, self.get_value(param.dvm_symb, param.dvm_name))
+                  for param in self.iter_readable_dvm_params()]
+        self.read_these(params)
+
+    @Cancellable
+    def on_find_initial_position(self):
+        segman = self._segman
+        # TODO: sync elements attributes
+        elements = segman.sequence.elements
+        with Dialog(self._frame) as dialog:
+            mon, qp, kl_0, kl_1 = OptikVarianzWidget(dialog).Query(elements)
+            kl_0 = segman.session.utool.add_unit('kl', kl_0)
+            kl_1 = segman.session.utool.add_unit('kl', kl_1)
+        self.sync_from_db()
+        tw = self.find_initial_position(mon, qp, kl_0, kl_1)
+        # TODO: proper update via segman methods
+        segment = segman.get_segment(mon)
+        segment.twiss_args.update(tw)
+        segment.twiss()
+
+    def find_initial_position(self, monitor, quadrupole, kl_0, kl_1):
+        """
+        Find initial beam alignment + momentum based on two measurements of a
+        monitor at different quadrupole strengths.
+        """
+        A, a = self._measure_with_optic(monitor, quadrupole, kl_0)
+        B, b = self._measure_with_optic(monitor, quadrupole, kl_1)
+        return self.compute_initial_position(A, a, B, b)
+
+    def _measure_with_optic(self, monitor, quadrupole, kl):
+        monitor = self._segman.get_element_info(monitor)
+        quadrupole = self._segman.get_element_info(quadrupole)
+        return (self._get_sectormap_with_optic(monitor, quadrupole, kl),
+                self._read_monitor_with_optic(monitor, quadrupole, kl))
+
+    def _get_sectormap_with_optic(self, monitor, quadrupole, kl):
+        segman = self._segman
+        madx = segman.session.madx
+        strip_unit = segman.session.utool.strip_unit
+        elements = segman.sequence.elements
+        segment_m = segman.get_segment(monitor)
+        segment_q = segman.get_segment(quadrupole)
+        assert segment_m is segment_q
+        segment = segment_m
+        orig_k1 = elements[quadrupole.name]['k1']
+        mad_name = strip_element_suffix(monitor.name) + '->k1'
+        mad_value = strip_unit('kl', kl) / elements[quadrupole.name]['l']
+        madx.set_value(mad_name, mad_value)
+        try:
+            return segment.get_transfer_map(segment.start, monitor)
+        finally:
+            if isinstance(orig_k1, Expression):
+                madx.set_expression(mad_name, orig_k1)
+            else:
+                madx.set_value(mad_name, orig_k1)
+
+    def _read_monitor_with_optic(self, monitor, quadrupole, kl):
+        par_type = 'k1'
+        dvm_name = 'kL_' + strip_element_suffix(monitor.name)
+        sav_value = self.get_value(par_type, dvm_name)
+        # TODO: use conversion utility to convert to a writeable parameter
+        # (KL_* are read-only).
+        dvm_value = kl
+        self.set_value(par_type, dvm_name, dvm_value)
+        self.execute()
+        try:
+            return self.get_sd_values(monitor)
+        finally:
+            self.set_value(par_type, dvm_name, sav_value)
+            self.execute()
+
+    def compute_initial_position(self, A, a, B, b):
+        """
+        Compute initial beam position from two monitor read-outs at different
+        quadrupole settings.
+
+        A, B are the 4D SECTORMAPs from start to the monitor.
+        a, b are the 2D measurement vectors (x, y)
+
+        This function solves the linear system:
+
+                Ax = a
+                Bx = b
+
+        for the 4D phase space vector x and returns the result as a dict with
+        keys 'x', 'px', 'y, 'py'.
+        """
+        utool = segman.session.utool
+        a = utool.dict_strip_units(a)
+        b = utool.dict_strip_units(b)
+        M = np.array([
+            [A[0][0], A[0][1], A[2][0], A[2][1]],
+            [B[0][0], B[0][1], B[2][0], B[2][1]],
+        ])
+        m = np.array([a['x'], a['y'], b['x'], b['y']])
+        x = np.linalg.lstsq(M, m)
+        return utool.dict_add_units({'x': x[0], 'px': x[1],
+                                     'y': x[2], 'py': x[3]})
