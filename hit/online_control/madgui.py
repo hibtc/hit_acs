@@ -152,7 +152,7 @@ class Plugin(object):
 
     def has_sequence(self):
         """Check if online control is connected and a sequence is loaded."""
-        return self.connected and bool(self._segman)
+        return self.connected and bool(self._segment)
 
     def load_and_connect(self):
         """Connect to online database."""
@@ -192,11 +192,11 @@ class Plugin(object):
         return bool(self._dvm)
 
     @property
-    def _segman(self):
+    def _segment(self):
         """Return the online control (:class:`madgui.component.Model`)."""
         panel = self._frame.GetActiveFigurePanel()
         if panel:
-            return panel.view.segman
+            return panel.view.segment
         return None
 
     def iter_dvm_params(self):
@@ -206,7 +206,7 @@ class Plugin(object):
 
         Yields tuples of the form (Element, list[DVM_Parameter]).
         """
-        for mad_elem in self._segman.elements:
+        for mad_elem in self._segment.elements:
             try:
                 el_name = strip_element_suffix(mad_elem['name'])
                 dvm_par = self._dvm_params[el_name]
@@ -271,17 +271,14 @@ class Plugin(object):
 
         :param list params: List of tuples (ParamConverterBase, dvm_value)
         """
-        segman = self._segman
-        madx = segman.session.madx
-        strip_unit = segman.session.utool.strip_unit
+        segment = self._segment
+        madx = segment.session.madx
+        strip_unit = segment.session.utool.strip_unit
         for param, dvm_value in params:
             mad_value = param.dvm2madx(dvm_value)
             plain_value = strip_unit(param.mad_symb, mad_value)
             madx.set_value(param.mad_name, plain_value)
-        # TODO: update only changed segments?:
-        # TODO: segment ordering
-        for segment in segman.segments.values():
-            segment.twiss()
+        segment.twiss()
 
     @Cancellable
     def write_all(self):
@@ -352,26 +349,23 @@ class Plugin(object):
         self.use_these_sd_values(selected)
 
     def use_these_sd_values(self, monitor_values):
-        segman = self._segman
-        utool = segman.session.utool
-        all_twiss = segman.twiss_initial.copy()
+        segment = self._segment
+        utool = segment.session.utool
         for elem, values in monitor_values:
-            twiss_initial = {}
-            ex = segman.beam['ex']
-            ey = segman.beam['ey']
+            sd = {}
+            ex = segment.beam['ex']
+            ey = segment.beam['ey']
             if 'widthx' in values:
-                twiss_initial['betx'] = values['widthx'] ** 2 / ex
+                sd['betx'] = values['widthx'] ** 2 / ex
             if 'widthy' in values:
-                twiss_initial['bety'] = values['widthy'] ** 2 / ey
+                sd['bety'] = values['widthy'] ** 2 / ey
             if 'posx' in values:
-                twiss_initial['x'] = values['posx']
+                sd['x'] = values['posx']
             if 'posy' in values:
-                twiss_initial['y'] = values['posy']
-            twiss_initial['mixin'] = True
-            twiss_initial = utool.dict_normalize_unit(twiss_initial)
-            element_info = segman.get_element_info(elem['name'])
-            all_twiss[element_info.index] = twiss_initial
-        segman.set_all(all_twiss)
+                sd['y'] = values['posy']
+            sd = utool.dict_normalize_unit(sd)
+            element_info = segment.get_element_info(elem['name'])
+            # TODO: show sd values in figure
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
@@ -403,7 +397,7 @@ class Plugin(object):
 
     def iter_monitors(self):
         """Iterate SD monitor elements (element dicts) in current sequence."""
-        for element in self._segman.elements:
+        for element in self._segment.elements:
             if element['type'].lower().endswith('monitor'):
                 yield element
 
@@ -440,39 +434,37 @@ class Plugin(object):
 
     @Cancellable
     def on_find_initial_position(self):
-        segman = self._segman
+        segment = self._segment
         # TODO: sync elements attributes
-        elements = segman.sequence.elements
+        elements = segment.sequence.elements
         with Dialog(self._frame) as dialog:
             mon, qp, kl_0, kl_1 = OptikVarianzWidget(dialog).Query(elements)
-            kl_0 = segman.session.utool.add_unit('kl', kl_0)
-            kl_1 = segman.session.utool.add_unit('kl', kl_1)
+            kl_0 = segment.session.utool.add_unit('kl', kl_0)
+            kl_1 = segment.session.utool.add_unit('kl', kl_1)
         self.sync_from_db()
         tw = self.find_initial_position(mon, qp, kl_0, kl_1)
-        # TODO: proper update via segman methods
-        segment = segman.get_segment(mon)
+        # TODO: proper update via segment methods
         segment.twiss_args.update(tw)
         segment.twiss()
         # align_beam(mon)
 
     def align_beam(self, vary, elem):
         # TODO: how to select elements for variation?
-        segman = self._segman
-        madx = segman.simulator.madx
-        segment = segman.get_segment(elem)
-        utool = segman.session.utool
+        segment = self._segment
+        madx = segment.session.madx
+        utool = segment.session.utool
         constraints = [
             {'range': elem['name'], 'x': 0},
             {'range': elem['name'], 'px': 0},
             {'range': elem['name'], 'y': 0},
             {'range': elem['name'], 'py': 0},
         ]
-        segman.simulator.madx.match(
+        madx.match(
             sequence=segment.sequence.name,
             vary=vary,
             constraints=constraints,
             twiss_init=utool.dict_strip_unit(segment.twiss_args))
-        segman.hook.update()
+        segment.hook.update()
 
     def find_initial_position(self, monitor, quadrupole, kl_0, kl_1):
         """
@@ -484,20 +476,16 @@ class Plugin(object):
         return self.compute_initial_position(A, a, B, b)
 
     def _measure_with_optic(self, monitor, quadrupole, kl):
-        monitor = self._segman.get_element_info(monitor)
-        quadrupole = self._segman.get_element_info(quadrupole)
+        monitor = self._segment.get_element_info(monitor)
+        quadrupole = self._segment.get_element_info(quadrupole)
         return (self._get_sectormap_with_optic(monitor, quadrupole, kl),
                 self._read_monitor_with_optic(monitor, quadrupole, kl))
 
     def _get_sectormap_with_optic(self, monitor, quadrupole, kl):
-        segman = self._segman
-        madx = segman.session.madx
-        strip_unit = segman.session.utool.strip_unit
-        elements = segman.sequence.elements
-        segment_m = segman.get_segment(monitor)
-        segment_q = segman.get_segment(quadrupole)
-        assert segment_m is segment_q
-        segment = segment_m
+        segment = self._segment
+        madx = segment.session.madx
+        strip_unit = segment.session.utool.strip_unit
+        elements = segment.sequence.elements
         orig_k1 = elements[quadrupole.name]['k1']
         mad_name = strip_element_suffix(monitor.name) + '->k1'
         mad_value = strip_unit('kl', kl) / elements[quadrupole.name]['l']
@@ -541,7 +529,7 @@ class Plugin(object):
         for the 4D phase space vector x and returns the result as a dict with
         keys 'x', 'px', 'y, 'py'.
         """
-        utool = segman.session.utool
+        utool = self._segment.session.utool
         a = utool.dict_strip_units(a)
         b = utool.dict_strip_units(b)
         M = np.array([

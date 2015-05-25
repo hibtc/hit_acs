@@ -233,7 +233,7 @@ class OptikVarianzWidget(Widget):
         return mon, qp, kl_0, kl_1
 
     def SetData(self, elements):
-        self.elem_mon = [el for el in elements if el['type'] == 'monitor']
+        self.elem_mon = [el for el in elements if el['type'].endswith('monitor')]
         self.elem_qps = [el for el in elements if el['type'] == 'quadrupole']
         self.ctrl_mon.SetItems([el_name(el) for el in self.elem_mon])
         self.ctrl_mon.SetSelection(len(self.elem_mon)-1)
