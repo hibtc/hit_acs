@@ -162,29 +162,6 @@ class MonitorWidget(ListSelectWidget):
         return format_quantity(value)
 
 
-class NumberInputWidget(Widget):
-
-    label = 'Enter number:'
-
-    def CreateControls(self, window):
-        self.ctrl_label = wx.StaticText(window, label=self.label)
-        self.ctrl_input = wx.TextCtrl(window, style=wx.TE_RIGHT)
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(self.ctrl_label, flag=wx.ALL|wx.ALIGN_CENTER, border=5)
-        sizer.AddSpacer(5)
-        sizer.Add(self.ctrl_input, 1, flag=wx.ALL|wx.ALIGN_CENTER, border=5)
-        return sizer
-
-    def GetData(self):
-        return float(ctrl_input.GetValue())
-
-    def SetData(self, number, label=None):
-        if label is not None:
-            self.label = label
-            self.ctrl_label.SetLabel(label)
-        self.ctrl_input.SetValue(str(number))
-
-
 def NumericInputCtrl(window):
     return wx.TextCtrl(window, style=wx.TE_RIGHT)
 
