@@ -28,6 +28,30 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
 
 
 #----------------------------------------
+# YAML serialization utilities
+#----------------------------------------
+
+def _serialize(field, value):
+    if field in ('unit', 'ui_unit'):
+        return unicode(value)
+    return value
+
+def _deserialize(field, value):
+    if field in ('unit', 'ui_unit'):
+        return unit.from_config(value)
+    return value
+
+def yaml_serialize_DVM_Parameter(param):
+    return tuple(_serialize(f, param[i])
+                 for i, f in enumerate(DVM_Parameter._fields))
+
+def yaml_deserialize_DVM_Parameter(param):
+    return DVM_Parameter(*tuple(
+        _deserialize(f, param[i])
+        for i, f in enumerate(DVM_Parameter._fields)))
+
+
+#----------------------------------------
 # CSV column types
 #----------------------------------------
 
@@ -162,26 +186,30 @@ class DVM_ParameterList(object):
 
     @classmethod
     def from_yaml(cls, filename, encoding='utf-8'):
+        try:
+            Loader = yaml.CSafeLoader
+        except AttributeError:
+            Loader = yaml.SafeLoader
         with open(filename, 'rb') as f:
-            data = yaml_load_unicode(f, yaml.SafeLoader)
+            data = yaml_load_unicode(f, Loader)
         return cls.from_yaml_data(data)
 
     @classmethod
     def from_yaml_data(cls, raw_data):
         data = {
-            name: [DVM_Parameter(*item) for item in items]
-            for name, items in raw_data
+            name: [yaml_deserialize_DVM_Parameter(item) for item in items]
+            for name, items in raw_data.items()
         }
         return cls(data)
 
     def to_yaml(self, filename=None, encoding='utf-8'):
         data = {
-            name: [tuple(item) for item in items]
+            name: [yaml_serialize_DVM_Parameter(item) for item in items]
             for name, items in self._data.items()
         }
         text = yaml.safe_dump(data, encoding=encoding, allow_unicode=True)
         if filename:
-            with open('foo.yml', 'wb') as f:
+            with open(filename, 'wb') as f:
                 f.write(text)
         else:
             return text
