@@ -8,6 +8,7 @@ import sys
 import traceback
 
 import numpy
+from pkg_resources import iter_entry_points
 
 from pydicti import dicti
 
@@ -87,6 +88,26 @@ class Plugin(object):
         """Check if the 'Connect &test stub' menu item should be shown."""
         # TODO: check for debug mode?
         return True
+
+    @property
+    def _model_name(self):
+        try:
+            return self._segment.model.name.lower()
+        except AttributeError:
+            pass
+        return 'all'
+
+    def _check_dvm_params(self):
+        if self._dvm_params:
+            return
+        for ep in iter_entry_points('hit.dvm_parameters.load'):
+            parlist = ep.load()(self._model_name)
+            if parlist:
+                self.set_dvm_parameter_list(parlist)
+                return
+        self.load_dvm_parameter_list()
+        if not self._dvm_params:
+            raise CancelAction
 
     def create_menu(self):
         """Create menu."""
@@ -208,6 +229,7 @@ class Plugin(object):
 
         Yields tuples of the form (Element, list[DVM_Parameter]).
         """
+        self._check_dvm_params()
         for mad_elem in self._segment.elements:
             try:
                 el_name = strip_element_suffix(mad_elem['name'])
