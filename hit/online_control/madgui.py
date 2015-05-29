@@ -8,7 +8,6 @@ import sys
 import traceback
 
 import numpy
-from pkg_resources import iter_entry_points
 
 from pydicti import dicti
 
@@ -16,7 +15,7 @@ from cpymad.util import strip_element_suffix
 from cpymad.types import Expression
 
 from madgui.core import wx
-from madgui.core.plugin import HookCollection
+from madgui.core.plugin import HookCollection, EntryPoint
 from madgui.util import unit
 from madgui.widget import menu
 from madgui.widget.input import Cancellable, Dialog
@@ -100,8 +99,8 @@ class Plugin(object):
     def _check_dvm_params(self):
         if self._dvm_params:
             return
-        for ep in iter_entry_points('hit.dvm_parameters.load'):
-            parlist = ep.load()(self._model_name)
+        for ep in EntryPoint('hit.dvm_parameters.load').slots:
+            parlist = ep(self._model_name)
             if parlist:
                 self.set_dvm_parameter_list(parlist)
                 return
