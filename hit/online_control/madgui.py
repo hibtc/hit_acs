@@ -7,6 +7,8 @@ from __future__ import absolute_import
 import sys
 import traceback
 
+import numpy
+
 from pydicti import dicti
 
 from cpymad.util import strip_element_suffix
@@ -499,19 +501,25 @@ class Plugin(object):
                 madx.set_value(mad_name, orig_k1)
 
     def _read_monitor_with_optic(self, monitor, quadrupole, kl):
-        par_type = 'k1'
-        dvm_name = 'kL_' + strip_element_suffix(monitor.name)
+        par_type = 'kL'
+        dvm_name = 'kL_' + strip_element_suffix(quadrupole.name)
         sav_value = self.get_value(par_type, dvm_name)
         # TODO: use conversion utility to convert to a writeable parameter
         # (KL_* are read-only).
         dvm_value = kl
         self.set_value(par_type, dvm_name, dvm_value)
         self.execute()
+        # TODO: have to wait here?
         try:
-            return self.get_sd_values(monitor)
+            return self.get_sd_values(monitor.name)
         finally:
             self.set_value(par_type, dvm_name, sav_value)
             self.execute()
+
+    def _strip_sd_pair(self, sd_values, prefix='pos'):
+        strip_unit = self._segment.session.utool.strip_unit
+        return (strip_unit('x', sd_values[prefix + 'x']),
+                strip_unit('y', sd_values[prefix + 'y']))
 
     def compute_initial_position(self, A, a, B, b):
         """
@@ -530,13 +538,15 @@ class Plugin(object):
         keys 'x', 'px', 'y, 'py'.
         """
         utool = self._segment.session.utool
-        a = utool.dict_strip_units(a)
-        b = utool.dict_strip_units(b)
-        M = np.array([
-            [A[0][0], A[0][1], A[2][0], A[2][1]],
-            [B[0][0], B[0][1], B[2][0], B[2][1]],
-        ])
-        m = np.array([a['x'], a['y'], b['x'], b['y']])
-        x = np.linalg.lstsq(M, m)
-        return utool.dict_add_units({'x': x[0], 'px': x[1],
-                                     'y': x[2], 'py': x[3]})
+        zero = numpy.zeros((2,4))
+        eye = numpy.eye(4)
+        s = ((0,2), slice(0,4))
+        M = numpy.bmat([[A[s], zero],
+                        [zero, B[s]],
+                        [eye,  -eye]])
+        m = (self._strip_sd_pair(a) +
+             self._strip_sd_pair(b) +
+             (0, 0, 0, 0))
+        x = numpy.linalg.lstsq(M, m)[0]
+        return utool.dict_add_unit({'x': x[0], 'px': x[1],
+                                    'y': x[2], 'py': x[3]})
