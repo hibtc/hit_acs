@@ -7,9 +7,13 @@ from __future__ import absolute_import
 import sys
 import traceback
 
+import numpy
+
 from pydicti import dicti
 
 from cpymad.util import strip_element_suffix
+from cpymad.types import Expression
+
 from madgui.core import wx
 from madgui.core.plugin import HookCollection
 from madgui.util import unit
@@ -20,8 +24,11 @@ from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
-from .dialogs import ImportParamWidget, ExportParamWidget, MonitorWidget
+from .dialogs import (ImportParamWidget, ExportParamWidget,
+                      MonitorWidget, OptikVarianzWidget)
 from .stub import BeamOptikDllProxy
+
+
 
 
 # TODO: catch exceptions and display error messages
@@ -125,6 +132,11 @@ class Plugin(object):
                  self.read_all_sd_values,
                  self.has_sequence),
             Separator,
+            Item('Detect beam &alignment',
+                 'Detect the beam alignment and momentum (Optikvarianz)',
+                 self.on_find_initial_position,
+                 self.has_sequence),
+            Separator,
             Item('&Load DVM parameter list',
                  'Load list of DVM parameters',
                  self.load_dvm_parameter_list,
@@ -142,7 +154,7 @@ class Plugin(object):
 
     def has_sequence(self):
         """Check if online control is connected and a sequence is loaded."""
-        return self.connected and bool(self._segman)
+        return self.connected and bool(self._segment)
 
     def load_and_connect(self):
         """Connect to online database."""
@@ -182,11 +194,11 @@ class Plugin(object):
         return bool(self._dvm)
 
     @property
-    def _segman(self):
+    def _segment(self):
         """Return the online control (:class:`madgui.component.Model`)."""
         panel = self._frame.GetActiveFigurePanel()
         if panel:
-            return panel.view.segman
+            return panel.view.segment
         return None
 
     def iter_dvm_params(self):
@@ -196,7 +208,7 @@ class Plugin(object):
 
         Yields tuples of the form (Element, list[DVM_Parameter]).
         """
-        for mad_elem in self._segman.elements:
+        for mad_elem in self._segment.elements:
             try:
                 el_name = strip_element_suffix(mad_elem['name'])
                 dvm_par = self._dvm_params[el_name]
@@ -261,17 +273,14 @@ class Plugin(object):
 
         :param list params: List of tuples (ParamConverterBase, dvm_value)
         """
-        segman = self._segman
-        madx = segman.session.madx
-        strip_unit = segman.session.utool.strip_unit
+        segment = self._segment
+        madx = segment.session.madx
+        strip_unit = segment.session.utool.strip_unit
         for param, dvm_value in params:
             mad_value = param.dvm2madx(dvm_value)
             plain_value = strip_unit(param.mad_symb, mad_value)
             madx.set_value(param.mad_name, plain_value)
-        # TODO: update only changed segments?:
-        # TODO: segment ordering
-        for segment in segman.segments.values():
-            segment.twiss()
+        segment.twiss()
 
     @Cancellable
     def write_all(self):
@@ -342,26 +351,23 @@ class Plugin(object):
         self.use_these_sd_values(selected)
 
     def use_these_sd_values(self, monitor_values):
-        segman = self._segman
-        utool = segman.session.utool
-        all_twiss = segman.twiss_initial.copy()
+        segment = self._segment
+        utool = segment.session.utool
         for elem, values in monitor_values:
-            twiss_initial = {}
-            ex = segman.beam['ex']
-            ey = segman.beam['ey']
+            sd = {}
+            ex = segment.beam['ex']
+            ey = segment.beam['ey']
             if 'widthx' in values:
-                twiss_initial['betx'] = values['widthx'] ** 2 / ex
+                sd['betx'] = values['widthx'] ** 2 / ex
             if 'widthy' in values:
-                twiss_initial['bety'] = values['widthy'] ** 2 / ey
+                sd['bety'] = values['widthy'] ** 2 / ey
             if 'posx' in values:
-                twiss_initial['x'] = values['posx']
+                sd['x'] = values['posx']
             if 'posy' in values:
-                twiss_initial['y'] = values['posy']
-            twiss_initial['mixin'] = True
-            twiss_initial = utool.dict_normalize_unit(twiss_initial)
-            element_info = segman.get_element_info(elem['name'])
-            all_twiss[element_info.index] = twiss_initial
-        segman.set_all(all_twiss)
+                sd['y'] = values['posy']
+            sd = utool.dict_normalize_unit(sd)
+            element_info = segment.get_element_info(elem['name'])
+            # TODO: show sd values in figure
 
     def get_sd_values(self, element_name):
         """Read out one SD monitor."""
@@ -393,7 +399,7 @@ class Plugin(object):
 
     def iter_monitors(self):
         """Iterate SD monitor elements (element dicts) in current sequence."""
-        for element in self._segman.elements:
+        for element in self._segment.elements:
             if element['type'].lower().endswith('monitor'):
                 yield element
 
@@ -422,3 +428,125 @@ class Plugin(object):
         """Use specified DVM_ParameterList."""
         self._dvm_params = dicti(parlist._data)
         self.hook.on_loaded_dvm_params(self._dvm_params)
+
+    def sync_from_db(self):
+        params = [(param, self.get_value(param.dvm_symb, param.dvm_name))
+                  for param in self.iter_readable_dvm_params()]
+        self.read_these(params)
+
+    @Cancellable
+    def on_find_initial_position(self):
+        segment = self._segment
+        # TODO: sync elements attributes
+        elements = segment.sequence.elements
+        with Dialog(self._frame) as dialog:
+            mon, qp, kl_0, kl_1 = OptikVarianzWidget(dialog).Query(elements)
+            kl_0 = segment.session.utool.add_unit('kl', kl_0)
+            kl_1 = segment.session.utool.add_unit('kl', kl_1)
+        self.sync_from_db()
+        tw = self.find_initial_position(mon, qp, kl_0, kl_1)
+        # TODO: proper update via segment methods
+        segment.twiss_args.update(tw)
+        segment.twiss()
+        # align_beam(mon)
+
+    def align_beam(self, vary, elem):
+        # TODO: how to select elements for variation?
+        segment = self._segment
+        madx = segment.session.madx
+        utool = segment.session.utool
+        constraints = [
+            {'range': elem['name'], 'x': 0},
+            {'range': elem['name'], 'px': 0},
+            {'range': elem['name'], 'y': 0},
+            {'range': elem['name'], 'py': 0},
+        ]
+        madx.match(
+            sequence=segment.sequence.name,
+            vary=vary,
+            constraints=constraints,
+            twiss_init=utool.dict_strip_unit(segment.twiss_args))
+        segment.hook.update()
+
+    def find_initial_position(self, monitor, quadrupole, kl_0, kl_1):
+        """
+        Find initial beam alignment + momentum based on two measurements of a
+        monitor at different quadrupole strengths.
+        """
+        A, a = self._measure_with_optic(monitor, quadrupole, kl_0)
+        B, b = self._measure_with_optic(monitor, quadrupole, kl_1)
+        return self.compute_initial_position(A, a, B, b)
+
+    def _measure_with_optic(self, monitor, quadrupole, kl):
+        monitor = self._segment.get_element_info(monitor)
+        quadrupole = self._segment.get_element_info(quadrupole)
+        return (self._get_sectormap_with_optic(monitor, quadrupole, kl),
+                self._read_monitor_with_optic(monitor, quadrupole, kl))
+
+    def _get_sectormap_with_optic(self, monitor, quadrupole, kl):
+        segment = self._segment
+        madx = segment.session.madx
+        strip_unit = segment.session.utool.strip_unit
+        elements = segment.sequence.elements
+        orig_k1 = elements[quadrupole.name]['k1']
+        mad_name = strip_element_suffix(monitor.name) + '->k1'
+        mad_value = strip_unit('kl', kl) / elements[quadrupole.name]['l']
+        madx.set_value(mad_name, mad_value)
+        try:
+            return segment.get_transfer_map(segment.start, monitor)
+        finally:
+            if isinstance(orig_k1, Expression):
+                madx.set_expression(mad_name, orig_k1)
+            else:
+                madx.set_value(mad_name, orig_k1)
+
+    def _read_monitor_with_optic(self, monitor, quadrupole, kl):
+        par_type = 'kL'
+        dvm_name = 'kL_' + strip_element_suffix(quadrupole.name)
+        sav_value = self.get_value(par_type, dvm_name)
+        # TODO: use conversion utility to convert to a writeable parameter
+        # (KL_* are read-only).
+        dvm_value = kl
+        self.set_value(par_type, dvm_name, dvm_value)
+        self.execute()
+        # TODO: have to wait here?
+        try:
+            return self.get_sd_values(monitor.name)
+        finally:
+            self.set_value(par_type, dvm_name, sav_value)
+            self.execute()
+
+    def _strip_sd_pair(self, sd_values, prefix='pos'):
+        strip_unit = self._segment.session.utool.strip_unit
+        return (strip_unit('x', sd_values[prefix + 'x']),
+                strip_unit('y', sd_values[prefix + 'y']))
+
+    def compute_initial_position(self, A, a, B, b):
+        """
+        Compute initial beam position from two monitor read-outs at different
+        quadrupole settings.
+
+        A, B are the 4D SECTORMAPs from start to the monitor.
+        a, b are the 2D measurement vectors (x, y)
+
+        This function solves the linear system:
+
+                Ax = a
+                Bx = b
+
+        for the 4D phase space vector x and returns the result as a dict with
+        keys 'x', 'px', 'y, 'py'.
+        """
+        utool = self._segment.session.utool
+        zero = numpy.zeros((2,4))
+        eye = numpy.eye(4)
+        s = ((0,2), slice(0,4))
+        M = numpy.bmat([[A[s], zero],
+                        [zero, B[s]],
+                        [eye,  -eye]])
+        m = (self._strip_sd_pair(a) +
+             self._strip_sd_pair(b) +
+             (0, 0, 0, 0))
+        x = numpy.linalg.lstsq(M, m)[0]
+        return utool.dict_add_unit({'x': x[0], 'px': x[1],
+                                    'y': x[2], 'py': x[3]})
