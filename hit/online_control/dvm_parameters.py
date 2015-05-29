@@ -7,8 +7,10 @@ from __future__ import absolute_import
 
 from collections import namedtuple
 
+import json
 import yaml
 
+from pydicti import dicti
 from madgui.util import unit
 from .util import csv_unicode_reader, yaml_load_unicode
 
@@ -99,7 +101,7 @@ class DVM_ParameterList(object):
 
     @classmethod
     def from_csv_data(cls, rows):
-        return cls(dict(cls._parse_csv_data(rows)))
+        return cls(dicti(cls._parse_csv_data(rows)))
 
     @classmethod
     def _parse_csv_data(cls, rows):
@@ -196,10 +198,10 @@ class DVM_ParameterList(object):
 
     @classmethod
     def from_yaml_data(cls, raw_data):
-        data = {
+        data = dicti({
             name: [yaml_deserialize_DVM_Parameter(item) for item in items]
             for name, items in raw_data.items()
-        }
+        })
         return cls(data)
 
     def to_yaml(self, filename=None, encoding='utf-8'):
