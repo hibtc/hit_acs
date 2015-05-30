@@ -93,8 +93,7 @@ class Plugin(object):
         try:
             return self._segment.model.name.lower()
         except AttributeError:
-            pass
-        return 'all'
+            return 'all'
 
     def _check_dvm_params(self):
         if self._dvm_params:
