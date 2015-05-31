@@ -18,7 +18,7 @@ from madgui.core import wx
 from madgui.core.plugin import HookCollection, EntryPoint
 from madgui.util import unit
 from madgui.widget import menu
-from madgui.widget.input import Cancellable, Dialog
+from madgui.widget.input import CancelAction, Cancellable, Dialog
 
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .dvm_parameters import DVM_ParameterList
