@@ -85,8 +85,7 @@ class BeamOptikDllProxy(object):
             dvm_params = chain.from_iterable(dvm_params.values())
         self.data['control'] = dicti(
             (param.name, _get_param_example_value(param))
-            for param in dvm_params
-            if param.read or param.write)
+            for param in dvm_params)
 
     @_api_meth
     def DisableMessageBoxes(self):

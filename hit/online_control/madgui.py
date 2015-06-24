@@ -251,32 +251,12 @@ class Plugin(object):
             for param in importer(mad_elem, dvm_params):
                 yield param
 
-    def iter_readable_dvm_params(self):
-        """
-        Iterate over all DVM parameters that can be imported as MAD-X element
-        attributes in the current sequence.
-
-        Yields instances of type :class:`ParamConverterBase`.
-        """
-        return (p for p in self.iter_convertible_dvm_params()
-                if p.dvm_param.read)
-
-    def iter_writable_dvm_params(self):
-        """
-        Iterate over all DVM parameters that can be set from  MAD-X element
-        attributes in the current sequence.
-
-        Yields instances of type :class:`ParamConverterBase`.
-        """
-        return (p for p in self.iter_convertible_dvm_params()
-                if p.dvm_param.write)
-
     @Cancellable
     def read_all(self):
         """Read all parameters from the online database."""
         # TODO: cache and reuse 'active' flag for each parameter
         rows = [(param, self.get_value(param.dvm_symb, param.dvm_name))
-                for param in self.iter_readable_dvm_params()]
+                for param in self.iter_convertible_dvm_params()]
         if not rows:
             wx.MessageBox('There are no readable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
                           'No readable parameters available',
@@ -306,7 +286,7 @@ class Plugin(object):
     def write_all(self):
         """Write all parameters to the online database."""
         rows = [(param, self.get_value(param.dvm_symb, param.dvm_name))
-                for param in self.iter_writable_dvm_params()]
+                for param in self.iter_convertible_dvm_params()]
         if not rows:
             wx.MessageBox('There are no writable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
                           'No writable parameters available',
@@ -451,7 +431,7 @@ class Plugin(object):
 
     def sync_from_db(self):
         params = [(param, self.get_value(param.dvm_symb, param.dvm_name))
-                  for param in self.iter_readable_dvm_params()]
+                  for param in self.iter_convertible_dvm_params()]
         self.read_these(params)
 
     @Cancellable

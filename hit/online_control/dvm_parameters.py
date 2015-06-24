@@ -19,8 +19,6 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
     'name',
     'ui_name',
     'ui_hint',
-    'read',
-    'write',
     'ui_prec',
     'unit',
     'ui_unit',
@@ -117,15 +115,13 @@ class DVM_ParameterList(object):
             item = parse_row(row)
             # detect cluster header lines:
             link = row[0]
-            if (link and not link.isdigit()
-                    and item.read is None
-                    and item.write is None):
+            if link and not link.isdigit() and not item.name:
                 # yield previous element/context
                 if cluster_items:
                     yield (cluster_name, cluster_items)
                 cluster_name = link
                 cluster_items = []
-            elif item.read or item.write:
+            elif item.name:
                 cluster_items.append(item)
         if cluster_items:
             yield (cluster_name, cluster_items)
@@ -139,8 +135,8 @@ class DVM_ParameterList(object):
         'ui_name',          # GUI Beschriftung Parameter (ohne Einheit)
         'ui_hint',          # GUI Beschriftung Hint
         '',                 # Position ExpertGrids
-        'read',             # DVM liest Parameter
-        'write',            # DVM ändert Parameter
+        '',                 # DVM liest Parameter
+        '',                 # DVM ändert Parameter
         '',                 # DVM Datensatz spezifisch
         '',                 # Rein temporär
         '',                 # MEFI-Abhängigkeit
@@ -170,8 +166,6 @@ class DVM_ParameterList(object):
         'name': CsvStr,
         'ui_name': CsvStr,
         'ui_hint': CsvStr,
-        'read': CsvBool,
-        'write': CsvBool,
         'ui_prec': CsvInt,
         'unit': CsvUnit,
         'ui_unit': CsvUnit,
