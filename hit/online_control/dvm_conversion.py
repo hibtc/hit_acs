@@ -159,4 +159,10 @@ class ParamImporter:
             def dvm2madx(self, value):
                 return value / self.mad_elem['l']
 
-    # TODO: more coefficients
+            # k1s?
+
+    # TODO: more coefficients:
+    # - multipole:  KNL/KSL
+    # - sbend:      ANGLE/?
+    #               dipedge?
+    # - solenoid:   KS/?

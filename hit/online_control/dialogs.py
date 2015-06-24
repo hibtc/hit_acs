@@ -190,6 +190,7 @@ class OptikVarianzWidget(Widget):
         mon = self.elem_mon[self.ctrl_mon.GetSelection()]
         qps = self.ctrl_qps
         sel = qps.GetSelection()
+        # TODO: select QP defined in config by default
         qps.SetItems([el_name(el) for el in self.elem_qps
                       if el['at'] < mon['at']])
         if sel < qps.GetCount() and sel != wx.NOT_FOUND:
@@ -199,6 +200,8 @@ class OptikVarianzWidget(Widget):
             self.OnChangeQuadrupole()
 
     def OnChangeQuadrupole(self, event=None):
+        # TODO: read second value from other focus setting (change to other
+        # focus setting, then read QP setting, then change back)
         elem = self.elem_qps[self.ctrl_qps.GetSelection()]
         self.ctrl_kl_0.SetValue(str(float(elem['k1'])))
 

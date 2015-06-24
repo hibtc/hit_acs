@@ -450,8 +450,17 @@ class Plugin(object):
         segment.twiss()
         # align_beam(mon)
 
-    def align_beam(self, vary, elem):
-        # TODO: how to select elements for variation?
+    def align_beam(self, elem):
+        # TODO: use config only as default, but ask user
+        varyconf = self._segment.model._data.get('align', {}).get(mon['name'])
+        if not varyconf:
+            wx.MessageBox('Steerer for alignment not defined',
+                          'No config for alignment',
+                          wx.ICON_ERROR|wx.OK,
+                          parent=self._frame)
+            return
+        vary = (varyconf['h-steerer'] +
+                varyconf['v-steerer'])
         segment = self._segment
         madx = segment.session.madx
         utool = segment.session.utool
@@ -460,6 +469,7 @@ class Plugin(object):
             {'range': elem['name'], 'px': 0},
             {'range': elem['name'], 'y': 0},
             {'range': elem['name'], 'py': 0},
+            # TODO: also set betx, bety unchanged?
         ]
         madx.match(
             sequence=segment.sequence.name,
@@ -467,6 +477,8 @@ class Plugin(object):
             constraints=constraints,
             twiss_init=utool.dict_strip_unit(segment.twiss_args))
         segment.hook.update()
+
+        # TODO: read matched parameters from madx and set in online control
 
     def find_initial_position(self, monitor, quadrupole, kl_0, kl_1):
         """
