@@ -166,6 +166,7 @@ class ParamImporter:
     class quadrupole(_MultiParamImporter):
 
         _known_param_names = ['k1']
+        # TODO: how to handle k1s?
 
         class k1(ParamConverterBase):
 
@@ -212,7 +213,36 @@ class ParamImporter:
                 return self._dvm.get_value(dvm_symb, dvm_name)
 
 
-            # k1s?
+    class multipole(_MultiParamImporter):
+
+        _known_param_names = ['knl', 'ksl']
+
+        # TODO: handle higher order multipole components
+
+        class knl(ParamConverterBase):
+
+            mad_symb = 'knl'
+            dvm_symb = 'ax'
+
+            def madx2dvm(self, value):
+                return value[0]
+
+            def dvm2madx(self, value):
+                return [value]
+
+
+        class ksl(ParamConverterBase):
+
+            mad_symb = 'ksl'
+            dvm_symb = 'ay'
+
+            def madx2dvm(self, value):
+                return value[0]
+
+            def dvm2madx(self, value):
+                return [value]
+
+
 
     # TODO: more coefficients:
     # - multipole:  KNL/KSL
