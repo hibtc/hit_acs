@@ -248,14 +248,14 @@ class Plugin(object):
                 importer = getattr(ParamImporter, mad_elem['type'])
             except AttributeError:
                 continue
-            for param in importer(mad_elem, dvm_params):
+            for param in importer(mad_elem, dvm_params, self):
                 yield param
 
     @Cancellable
     def read_all(self):
         """Read all parameters from the online database."""
         # TODO: cache and reuse 'active' flag for each parameter
-        rows = [(param, self.get_value(param.dvm_symb, param.dvm_name))
+        rows = [(param, param.get_value())
                 for param in self.iter_convertible_dvm_params()]
         if not rows:
             wx.MessageBox('There are no readable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
@@ -285,7 +285,7 @@ class Plugin(object):
     @Cancellable
     def write_all(self):
         """Write all parameters to the online database."""
-        rows = [(param, self.get_value(param.dvm_symb, param.dvm_name))
+        rows = [(param, param.get_value())
                 for param in self.iter_convertible_dvm_params()]
         if not rows:
             wx.MessageBox('There are no writable DVM parameters in the current sequence. Note that this operation requires a list of DVM parameters to be loaded.',
@@ -304,7 +304,7 @@ class Plugin(object):
         :param list params: List of ParamConverterBase
         """
         for par in params:
-            self.set_value(par.param_type, par.dvm_name, par.madx_value)
+            par.set_value()
 
     def get_float_value(self, dvm_name):
         """Get a single float value from the online database."""
@@ -430,7 +430,7 @@ class Plugin(object):
         self.hook.on_loaded_dvm_params(self._dvm_params)
 
     def sync_from_db(self):
-        params = [(param, self.get_value(param.dvm_symb, param.dvm_name))
+        params = [(param, param.get_value())
                   for param in self.iter_convertible_dvm_params()]
         self.read_these(params)
 

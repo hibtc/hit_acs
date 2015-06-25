@@ -60,7 +60,7 @@ class _MultiParamImporter(object):
         _known_param_names      List of parameters for this element type
     """
 
-    def __init__(self, mad_elem, dvm_params):
+    def __init__(self, mad_elem, dvm_params, _dvm):
         """
         Prepare importer object for a specific element.
 
@@ -70,13 +70,15 @@ class _MultiParamImporter(object):
         self.mad_elem = mad_elem
         self.dvm_params_map = dicti((dvm_param.name, dvm_param)
                                     for dvm_param in dvm_params)
+        # TODO: rename plugin // store dedicated object (with more pure API)
+        self._dvm = _dvm
 
     def __iter__(self):
         """Iterate over all existing importable parameters in the element."""
         for param_name in self._known_param_names:
             param_func = getattr(self, param_name)
             try:
-                yield param_func(self.mad_elem, self.dvm_params_map)
+                yield param_func(self.mad_elem, self.dvm_params_map, self._dvm)
             except ValueError:
                 pass
 
@@ -106,7 +108,12 @@ class ParamConverterBase(object):
         dvm2madx        convert DVM value to MAD-X value
     """
 
-    def __init__(self, mad_elem, dvm_params_map):
+    # TODO: improve API of this class...
+    # - rename set_value(), get_value()
+    # - handle mad_value differently?
+    # - common display name
+
+    def __init__(self, mad_elem, dvm_params_map, _dvm):
         """
         Fill members with info about the DVM parameter/MAD-X attribute.
 
@@ -125,7 +132,8 @@ class ParamConverterBase(object):
         self.dvm_param = dvm_param
         self.dvm_name = dvm_name
         self.mad_name = mad_name
-        self.mad_value = mad_value
+        self._mad_value = mad_value
+        self._dvm = _dvm
 
     def madx2dvm(self, value):
         """Convert MAD-X value to DVM value [abstract method]."""
@@ -134,6 +142,21 @@ class ParamConverterBase(object):
     def dvm2madx(self, value):
         """Convert DVM value to MAD-X value [abstract method]."""
         raise NotImplementedError
+
+    def set_value(self):
+        return self._dvm.set_value(
+            self.param_type,
+            self.dvm_name,
+            self.madx_value)
+
+    def get_value(self):
+        return self._dvm.get_value(
+            self.dvm_symb,
+            self.dvm_name)
+
+    @property
+    def mad_value(self):
+        return self._mad_value
 
 
 class ParamImporter:
@@ -159,10 +182,40 @@ class ParamImporter:
             def dvm2madx(self, value):
                 return value / self.mad_elem['l']
 
+
+    class sbend(_MultiParamImporter):
+
+        _known_param_names = ['angle']
+
+        class angle(ParamConverterBase):
+
+            # The total angle is the sum of correction angle (dax) and
+            # geometric angle (axgeo):
+            #
+            #   angle = axgeo + dax
+            #
+            # Only the correction angle is to be modified.
+
+            mad_symb = 'angle'
+            dvm_symb = 'dax'
+
+            def madx2dvm(self, value):
+                return value - self.axgeo
+
+            def dvm2madx(self, value):
+                return value + self.axgeo
+
+            @property
+            def axgeo(self):
+                dvm_symb = 'axgeo'
+                dvm_name = dvm_symb + '_' + self.el_name
+                return self._dvm.get_value(dvm_symb, dvm_name)
+
+
             # k1s?
 
     # TODO: more coefficients:
     # - multipole:  KNL/KSL
-    # - sbend:      ANGLE/?
+    # - sbend:      ANGLE/dax
     #               dipedge?
     # - solenoid:   KS/?
