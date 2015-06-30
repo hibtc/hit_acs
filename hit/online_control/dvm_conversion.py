@@ -243,6 +243,21 @@ class ParamImporter:
                 return [value]
 
 
+    class solenoid(_MultiParamImporter):
+
+        _known_param_names = ['ks']
+
+        class ks(ParamConverterBase):
+
+            mad_symb = 'ks'
+            dvm_symb = 'ks'
+
+            def madx2dvm(self, value):
+                return value
+
+            def dvm2madx(self, value):
+                return value
+
 
     # TODO: more coefficients:
     # - multipole:  KNL/KSL
