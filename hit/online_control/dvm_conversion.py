@@ -183,6 +183,12 @@ class ParamImporter:
             def dvm2madx(self, value):
                 return value / self.mad_elem['l']
 
+    # TODO: double check all of these...
+
+    # TODO: what about DIPEDGE?
+
+    # TODO: DIPOLEs (+MULTIPOLEs) rotate the reference orbit, which is
+    # probably not intended... use YROTATION?
 
     class sbend(_MultiParamImporter):
 
@@ -218,6 +224,7 @@ class ParamImporter:
         _known_param_names = ['knl', 'ksl']
 
         # TODO: handle higher order multipole components
+        # TODO: handle more complicated elements (see HICAT bible)
 
         class knl(ParamConverterBase):
 
@@ -259,8 +266,4 @@ class ParamImporter:
                 return value
 
 
-    # TODO: more coefficients:
-    # - multipole:  KNL/KSL
-    # - sbend:      ANGLE/dax
-    #               dipedge?
-    # - solenoid:   KS/?
+    # TODO: more coefficients?
