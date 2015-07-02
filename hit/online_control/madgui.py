@@ -11,7 +11,6 @@ import numpy
 
 from pydicti import dicti
 
-from cpymad.util import strip_element_suffix
 from cpymad.types import Expression
 
 from madgui.core import wx
@@ -230,7 +229,7 @@ class Plugin(object):
         self._check_dvm_params()
         for mad_elem in self._segment.elements:
             try:
-                el_name = strip_element_suffix(mad_elem['name'])
+                el_name = mad_elem['name']
                 dvm_par = self._dvm_params[el_name]
                 yield (mad_elem, dvm_par)
             except KeyError:
@@ -389,7 +388,6 @@ class Plugin(object):
 
     def _get_sd_value(self, element_name, param_name):
         """Return a single SD value (with unit)."""
-        element_name = strip_element_suffix(element_name)
         element_name = strip_prefix(element_name, 'sd_')
         param_name = param_name
         sd_name = param_name + '_' + element_name
@@ -489,7 +487,7 @@ class Plugin(object):
         strip_unit = segment.session.utool.strip_unit
         elements = segment.sequence.elements
         orig_k1 = elements[quadrupole.name]['k1']
-        mad_name = strip_element_suffix(monitor.name) + '->k1'
+        mad_name = monitor.name + '->k1'
         mad_value = strip_unit('kl', kl) / elements[quadrupole.name]['l']
         madx.set_value(mad_name, mad_value)
         try:
@@ -502,7 +500,7 @@ class Plugin(object):
 
     def _read_monitor_with_optic(self, monitor, quadrupole, kl):
         par_type = 'kL'
-        dvm_name = 'kL_' + strip_element_suffix(quadrupole.name)
+        dvm_name = 'kL_' + quadrupole.name
         sav_value = self.get_value(par_type, dvm_name)
         # TODO: use conversion utility to convert to a writeable parameter
         # (KL_* are read-only).
