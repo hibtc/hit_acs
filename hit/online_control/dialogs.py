@@ -6,17 +6,11 @@ from __future__ import absolute_import
 
 from functools import partial
 
-from cpymad.util import strip_element_suffix
-
 from madgui.core import wx
 from madgui.widget.listview import ListCtrl, ColumnInfo
 from madgui.widget.input import Widget
 from madgui.widget.element import ElementWidget
 from madgui.util.unit import format_quantity, tounit
-
-
-def el_name(el):
-    return strip_element_suffix(el['name'])
 
 
 class ListSelectWidget(Widget):
@@ -152,7 +146,7 @@ class MonitorWidget(ListSelectWidget):
 
     def _format_monitor_name(self, index, item):
         elem, values = item
-        return strip_element_suffix(elem['name'])
+        return elem['name']
 
     def _format_sd_value(self, name, index, item):
         elem, values = item
@@ -191,7 +185,7 @@ class OptikVarianzWidget(Widget):
         qps = self.ctrl_qps
         sel = qps.GetSelection()
         # TODO: select QP defined in config by default
-        qps.SetItems([el_name(el) for el in self.elem_qps
+        qps.SetItems([el['name'] for el in self.elem_qps
                       if el['at'] < mon['at']])
         if sel < qps.GetCount() and sel != wx.NOT_FOUND:
             qps.SetSelection(sel)
@@ -215,7 +209,7 @@ class OptikVarianzWidget(Widget):
     def SetData(self, elements):
         self.elem_mon = [el for el in elements if el['type'].endswith('monitor')]
         self.elem_qps = [el for el in elements if el['type'] == 'quadrupole']
-        self.ctrl_mon.SetItems([el_name(el) for el in self.elem_mon])
+        self.ctrl_mon.SetItems([el['name'] for el in self.elem_mon])
         self.ctrl_mon.SetSelection(len(self.elem_mon)-1)
         self.OnChangeMonitor()
 

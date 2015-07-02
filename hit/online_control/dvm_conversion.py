@@ -7,7 +7,7 @@ from __future__ import absolute_import
 from pydicti import dicti
 
 from cpymad.types import Expression
-from cpymad.util import strip_element_suffix, is_identifier
+from cpymad.util import is_identifier
 from madgui.util.symbol import SymbolicValue
 
 
@@ -43,7 +43,7 @@ def get_element_attribute(element, attr):
         name = ''       # not a valid identifier! -> for check below
         value = expr    # shoud be float in this code branch
     if not is_identifier(name):
-        name = strip_element_suffix(element['name']) + '->' + attr
+        name = element['name'] + '->' + attr
     return (name, value)
 
 
@@ -119,7 +119,7 @@ class ParamConverterBase(object):
 
         :raises ValueError: if this parameter is not available in DVM
         """
-        el_name = strip_element_suffix(mad_elem['name'])
+        el_name = mad_elem['name']
         dvm_name = self.dvm_symb + '_' + el_name
         try:
             dvm_param = dvm_params_map[dvm_name]
