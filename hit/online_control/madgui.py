@@ -24,7 +24,7 @@ from .dvm_parameters import DVM_ParameterList
 from .dvm_conversion import ParamImporter
 from .util import load_yaml_resource
 from .dialogs import (ImportParamWidget, ExportParamWidget,
-                      MonitorWidget, OptikVarianzWidget)
+                      MonitorWidget, OpticSelectWidget, OptikVarianzWidget)
 from .stub import BeamOptikDllProxy
 
 
@@ -432,25 +432,23 @@ class Plugin(object):
                   for param in self.iter_convertible_dvm_params()]
         self.read_these(params)
 
+    @property
+    def varyconf(self):
+        return self._segment.model._data.get('align', {})
+
     @Cancellable
     def on_find_initial_position(self):
         segment = self._segment
         # TODO: sync elements attributes
         elements = segment.sequence.elements
         with Dialog(self._frame) as dialog:
-            mon, qp, kl_0, kl_1 = OptikVarianzWidget(dialog).Query(elements)
-            kl_0 = segment.session.utool.add_unit('kl', kl_0)
-            kl_1 = segment.session.utool.add_unit('kl', kl_1)
-        self.sync_from_db()
-        tw = self.find_initial_position(mon, qp, kl_0, kl_1)
-        # TODO: proper update via segment methods
-        segment.twiss_args.update(tw)
-        segment.twiss()
-        # align_beam(mon)
+            elems = OpticSelectWidget(dialog).Query(elements, self.varyconf)
+        with Dialog(self._frame) as dialog:
+            OptikVarianzWidget(dialog).Query(self, *elems)
 
     def align_beam(self, elem):
         # TODO: use config only as default, but ask user
-        varyconf = self._segment.model._data.get('align', {}).get(mon['name'])
+        varyconf = self.varyconf.get(mon['name'])
         if not varyconf:
             wx.MessageBox('Steerer for alignment not defined',
                           'No config for alignment',
