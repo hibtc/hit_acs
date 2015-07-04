@@ -31,6 +31,4 @@ __classifiers__ = [
 ]
 
 entry_points = """
-    [madgui.widget.notebook.menu]
-    online_control = hit.online_control.madgui:Plugin
 """
