@@ -31,4 +31,7 @@ __classifiers__ = [
 ]
 
 entry_points = """
+[madgui.online.PluginLoader]
+stub = hit.online_control.plugin:StubLoader
+dll = hit.online_control.plugin:DllLoader
 """
