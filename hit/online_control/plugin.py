@@ -170,10 +170,11 @@ class HitOnlineControl(api.OnlinePlugin):
         Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
         tuple for a dipole.
         """
+        el_name = elements[0]['name']
         geom_symb = 'a' + ('y' if skew else 'x') + 'geo'
-        geom_parm = geom_symb + '_' + elements[0]['name']
-        if geom_parm in self._mgr.get(segment):
-            ageo = _get_value(self._dvm, self._utool, geom_symb, geom_name)
+        geom_parm = geom_symb + '_' + el_name
+        if geom_parm in self._mgr.get(segment).get(el_name, {}):
+            ageo = _get_value(self._dvm, self._utool, geom_symb, geom_parm)
             conv = (DipoleVBigConv if skew else DipoleHBigConv)(ageo)
         else:
             conv = (DipoleVConv if skew else DipoleHConv)()
@@ -290,7 +291,7 @@ class _DipoleBigConv(api.ElementBackendConverter):
 
     @property
     def backend_keys(self):
-        return self._key
+        return [self._key]
 
     def __init__(self, ageo):
         self._ageo = ageo
