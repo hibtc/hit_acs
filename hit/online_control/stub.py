@@ -4,7 +4,6 @@ Stub class for BeamOptikDLL.dll ctypes proxy objects as used by
 offline testing of the basic functionality.
 """
 
-from itertools import chain
 import functools
 from ctypes import c_char_p
 
@@ -78,14 +77,13 @@ class BeamOptikDllProxy(object):
         Initialize DVM parameter values from examples as given in an imported
         DVM parameter list.
 
-        :param list dvm_params: list of :class:`DVM_Parameter`
+        :param dict dvm_params: list of :class:`DVM_Parameter`
         """
         # support a 'dvm_params_map' {element name: [DVM_Parameter]}:
-        if isinstance(dvm_params, dict):
-            dvm_params = chain.from_iterable(dvm_params.values())
         self.data['control'] = dicti(
             (param.name, _get_param_example_value(param))
-            for param in dvm_params)
+            for parlist in dvm_params.values()
+            for param in parlist.values())
 
     @_api_meth
     def DisableMessageBoxes(self):
@@ -149,7 +147,11 @@ class BeamOptikDllProxy(object):
     def GetFloatValue(self, iid, name, value, options):
         """Get a float value from the "database"."""
         assert self.instances[iid.value]
-        value.value = self.data['control'][name]
+        v = self.data['control'][name]
+        if v is None:
+            value.value = 0
+        else:
+            value.value = float(v)
 
     @_api_meth
     def SetFloatValue(self, iid, name, value, options):
