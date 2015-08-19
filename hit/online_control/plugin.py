@@ -72,6 +72,22 @@ class DVM_Param_Manager(object):
             self.hook.on_loaded_dvm_params(dvm_params)
         return self._cache[segment]
 
+    def _elem_param_dict(self, el_name, parlist):
+        ret = dicti((p.name, p) for p in parlist)
+        # NOTE: the following is an ugly hack to correct for missing suffixes
+        # for some of the DB parameters. It would better to find a solution
+        # that is not hard-coded.
+        el_name = el_name.lower()
+        if el_name.endswith('h') or el_name.endswith('v'):
+            update = {}
+            el_prefix = el_name[:-1]
+            el_suffix = el_name[-1]
+            for k, v in ret.items():
+                if k.lower().endswith('_' + el_prefix):
+                    update[k+el_suffix] = v
+            ret.update(update)
+        return ret
+
     def _load(self, segment):
         try:
             repo = segment.model._repo
@@ -81,12 +97,8 @@ class DVM_Param_Manager(object):
         except AttributeError:
             parlist = self._load_from_disc()
         return dicti(
-            (k, dicti(
-                (p.name, p)
-                for p in l
-            ))
-            for k, l in parlist._data.items()
-        )
+            (k, self._elem_param_dict(k, l))
+            for k, l in parlist._data.items())
 
     def _load_from_disc(self):
         """Show a FileDialog to import a new DVM parameter list."""
