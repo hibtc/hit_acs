@@ -10,7 +10,7 @@ __title__ = 'hit_online_control'
 __summary__ = 'Online control for the HIT accelerator facility.'
 __uri__ = 'https://bitbucket.org/coldfix/hit-online-control'
 
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 
 __author__ = 'Thomas Gläßle'
 __email__ = 't_glaessle@gmx.de'
