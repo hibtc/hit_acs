@@ -265,7 +265,8 @@ class DBMonitorBackend(api.ElementBackend):
 # TODO: handle more complicated elements (see HICAT bible)
 
 class MonitorConv(api.NoConversion):
-    standard_keys = backend_keys = ['posx', 'posy', 'envx', 'envy']
+    standard_keys = ['posx', 'posy', 'envx', 'envy']
+    backend_keys = ['posx', 'posy', 'widthx', 'widthy']
 
 
 class DipoleHConv(api.NoConversion):
