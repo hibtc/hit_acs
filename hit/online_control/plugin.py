@@ -120,15 +120,15 @@ class DVM_Param_Manager(object):
                           parent=self._frame)
 
 
-def _get_value(dvm, utool, param_type, dvm_name):
+def _get_value(dvm, par_unit, dvm_name):
     """Get a single value from the online database with unit."""
     plain_value = dvm.GetFloatValue(dvm_name)
-    return utool.add_unit(param_type.lower(), plain_value)
+    return plain_value * par_unit
 
 
-def _set_value(dvm, utool, param_type, dvm_name, value):
+def _set_value(dvm, par_unit, dvm_name, value):
     """Set a single parameter in the online database with unit."""
-    plain_value = utool.strip_unit(param_type, value)
+    plain_value = unit.strip_unit(value, par_unit)
     dvm.SetFloatValue(dvm_name, plain_value)
 
 
@@ -185,8 +185,10 @@ class HitOnlineControl(api.OnlinePlugin):
         el_name = elements[0]['name']
         geom_symb = 'a' + ('y' if skew else 'x') + 'geo'
         geom_parm = geom_symb + '_' + el_name
-        if geom_parm in self._mgr.get(segment).get(el_name, {}):
-            ageo = _get_value(self._dvm, self._utool, geom_symb, geom_parm)
+        el_pars = self._mgr.get(segment).get(el_name, {})
+        if geom_parm in el_pars:
+            parm = el_pars[geom_parm]
+            ageo = _get_value(self._dvm, parm.unit, parm.name)
             conv = (DipoleVBigConv if skew else DipoleHBigConv)(ageo)
         else:
             conv = (DipoleVConv if skew else DipoleHConv)()
@@ -207,9 +209,6 @@ class HitOnlineControl(api.OnlinePlugin):
         return self._construct(segment, elements, SolenoidConv())
 
     def _construct(self, segment, elements, conv):
-        name = elements[0]['name']
-        lval = {key: key + '_' + name for key in conv.backend_keys}
-        back = DBElementBackend(self._dvm, self._utool, lval)
         try:
             conv.param_info = {
                 key: self.param_info(segment, elements[0], key)
@@ -217,6 +216,8 @@ class HitOnlineControl(api.OnlinePlugin):
             }
         except KeyError:
             raise api.UnknownElement
+        lval = {key: conv.param_info[key] for key in conv.backend_keys}
+        back = DBElementBackend(self._dvm, lval)
         return conv, back
 
 
@@ -224,20 +225,20 @@ class DBElementBackend(api.ElementBackend):
 
     """Mitigates r/w access to the properties of an element."""
 
-    def __init__(self, dvm, utool, lval):
+    def __init__(self, dvm, lval):
         self._dvm = dvm
-        self._utool = utool
-        self._lval = lval
+        self._pars = lval
 
     def get(self):
         """Get dict of values from the DB."""
-        return {key: _get_value(self._dvm, self._utool, key, lval)
-                for key, lval in self._lval.items()}
+        return {key: _get_value(self._dvm, par.unit, par.name)
+                for key, par in self._pars.items()}
 
     def set(self, values):
         """Store values to DB."""
         for key, val in values.items():
-            _set_value(self._dvm, self._utool, key, self._lval[key], val)
+            par = self._pars[key]
+            _set_value(self._dvm, par.unit, par.name, val)
 
 
 class DBMonitorBackend(api.ElementBackend):
