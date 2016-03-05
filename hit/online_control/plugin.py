@@ -187,9 +187,7 @@ class HitOnlineControl(api.OnlinePlugin):
         geom_parm = geom_symb + '_' + el_name
         el_pars = self._mgr.get(segment).get(el_name, {})
         if geom_parm in el_pars:
-            parm = el_pars[geom_parm]
-            ageo = _get_value(self._dvm, parm.unit, parm.name)
-            conv = (DipoleVBigConv if skew else DipoleHBigConv)(ageo)
+            conv = (DipoleVBigConv if skew else DipoleHBigConv)()
         else:
             conv = (DipoleVConv if skew else DipoleHConv)()
         return self._construct(segment, elements, conv)
@@ -207,6 +205,21 @@ class HitOnlineControl(api.OnlinePlugin):
         tuple for a solenoid.
         """
         return self._construct(segment, elements, SolenoidConv())
+
+    def get_kicker(self, segment, elements, skew):
+        """
+        Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
+        tuple for a kicker.
+        """
+        try:
+            key, el_name = elements[0]['kick']._expression.split('_')
+        except AttributeError:
+            key = 'day' if skew else 'dax'
+            el_name = elements[0]['name'].split('_')[0]
+        conv = KickerConv(key)
+        # the dax_ param is stored with the main magnet:
+        element = segment.elements[segment.get_element_index(el_name)]
+        return self._construct(segment, (element,), conv)
 
     def _construct(self, segment, elements, conv):
         try:
@@ -292,37 +305,14 @@ class DipoleVConv(api.NoConversion):
     backend_keys = ['ay']
 
 
-class _DipoleBigConv(api.ElementBackendConverter):
-
-    # The total angle is the sum of correction angle (dax) and
-    # geometric angle (axgeo):
-    #
-    #   angle = axgeo + dax
-    #
-    # Only the correction angle is to be modified.
-
+class DipoleHBigConv(api.NoConversion):
     standard_keys = ['angle']
-
-    @property
-    def backend_keys(self):
-        return [self._key]
-
-    def __init__(self, ageo):
-        self._ageo = ageo
-
-    def to_standard(self, values):
-        return {'angle': values[self._key] + self._ageo}
-
-    def to_backend(self, values):
-        return {self._key: values['angle'] - self._ageo}
+    backend_keys = ['axgeo']
 
 
-class DipoleHBigConv(_DipoleBigConv):
-    _key = 'dax'
-
-
-class DipoleVBigConv(_DipoleBigConv):
-    _key = 'day'
+class DipoleVBigConv(api.NoConversion):
+    standard_keys = ['angle']
+    backend_keys = ['aygeo']
 
 
 class QuadrupoleConv(api.NoConversion):
@@ -331,3 +321,10 @@ class QuadrupoleConv(api.NoConversion):
 
 class SolenoidConv(api.NoConversion):
     standard_keys = backend_keys = ['ks']
+
+
+class KickerConv(api.NoConversion):
+    standard_keys = ['angle']
+
+    def __init__(self, key):
+        self.backend_keys = [key]
