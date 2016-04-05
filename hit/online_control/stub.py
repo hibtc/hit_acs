@@ -95,8 +95,8 @@ class BeamOptikDllProxy(object):
         """Create a new interface instance."""
         iid.value = self.next_iid
         self.instances[iid.value] = {
-            'VAcc': None,
-            'EFIA': (None, None, None, None),
+            'VAcc': 1,
+            'EFIA': (1, 1, 1, 1),
         }
         self.next_iid += 1
 
@@ -122,7 +122,7 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def SelectMEFI(self, iid, vaccnum,
                    energy, focus, intensity, gantry_angle,
-                   energy_val, focus_val, intensity_val, angle_angle_val):
+                   energy_val, focus_val, intensity_val, gantry_angle_val):
         """Set MEFI in current VAcc."""
         # The real DLL requires SelectVAcc to be called in advance, so we
         # enforce this constraint here as well:
@@ -206,15 +206,15 @@ class BeamOptikDllProxy(object):
 
     @_api_meth
     def GetMEFIValue(self, iid,
-                     energy_chn, focus_chn, intensity_chn, gantry_angle_chn,
-                     energy_val, focus_val, intensity_val, gantry_angle_val):
+                     energy_val, focus_val, intensity_val, gantry_angle_val,
+                     energy_chn, focus_chn, intensity_chn, gantry_angle_chn):
         """Get current MEFI combination."""
         e, f, i, a = self.instances[iid.value]['EFIA']
-        energy.value = e
-        focus.value = f
-        intensity.value = i
-        gantry_angle.value = a
-        energy_val.value = float(energy.value)
-        focus_val.value = float(focus.value)
-        intensity_val.value = float(intensity.value)
-        gantry_angle_val.value = float(gantry_angle.value)
+        energy_chn.value = e
+        focus_chn.value = f
+        intensity_chn.value = i
+        gantry_angle_chn.value = a
+        energy_val.value = float(energy_chn.value)
+        focus_val.value = float(focus_chn.value)
+        intensity_val.value = float(intensity_chn.value)
+        gantry_angle_val.value = float(gantry_angle_chn.value)
