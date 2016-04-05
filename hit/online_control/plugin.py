@@ -212,12 +212,12 @@ class HitOnlineControl(api.OnlinePlugin):
         tuple for a kicker.
         """
         try:
-            key, el_name = elements[0]['kick']._expression.split('_')
+            key = elements[0]['kick']._expression.split('_')[0]
         except AttributeError:
             key = 'day' if skew else 'dax'
-            el_name = elements[0]['name'].split('_')[0]
         conv = KickerConv(key)
         # the dax_ param is stored with the main magnet:
+        el_name = elements[0]['name'].split('_')[0]
         element = segment.elements[segment.get_element_index(el_name)]
         return self._construct(segment, (element,), conv)
 
