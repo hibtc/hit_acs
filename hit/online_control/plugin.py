@@ -163,9 +163,8 @@ class HitOnlineControl(api.OnlinePlugin):
         """Execute changes (commits prior set_value operations)."""
         self._dvm.ExecuteChanges(options)
 
-    def param_info(self, segment, element, key):
+    def param_info(self, segment, el_name, key):
         """Get parameter info for backend key."""
-        el_name = element['name']
         return self._mgr.get(segment)[el_name][key + '_' + el_name]
 
     def get_monitor(self, segment, elements):
@@ -190,21 +189,21 @@ class HitOnlineControl(api.OnlinePlugin):
             conv = (DipoleVBigConv if skew else DipoleHBigConv)()
         else:
             conv = (DipoleVConv if skew else DipoleHConv)()
-        return self._construct(segment, elements, conv)
+        return self._construct(segment, elements[0]['name'], conv)
 
     def get_quadrupole(self, segment, elements):
         """
         Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
         tuple for a quadrupole.
         """
-        return self._construct(segment, elements, QuadrupoleConv())
+        return self._construct(segment, elements[0]['name'], QuadrupoleConv())
 
     def get_solenoid(self, segment, elements):
         """
         Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
         tuple for a solenoid.
         """
-        return self._construct(segment, elements, SolenoidConv())
+        return self._construct(segment, elements[0]['name'], SolenoidConv())
 
     def get_kicker(self, segment, elements, skew):
         """
@@ -218,13 +217,12 @@ class HitOnlineControl(api.OnlinePlugin):
         conv = KickerConv(key)
         # the dax_ param is stored with the main magnet:
         el_name = elements[0]['name'].split('_')[0]
-        element = segment.elements[segment.get_element_index(el_name)]
-        return self._construct(segment, (element,), conv)
+        return self._construct(segment, el_name, conv)
 
-    def _construct(self, segment, elements, conv):
+    def _construct(self, segment, el_name, conv):
         try:
             conv.param_info = {
-                key: self.param_info(segment, elements[0], key)
+                key: self.param_info(segment, el_name, key)
                 for key in conv.backend_keys
             }
         except KeyError:
