@@ -9,6 +9,7 @@ from collections import namedtuple
 from ctypes import c_double as Double, c_char_p as Str, c_int as Int
 import ctypes
 import logging
+import platform
 
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
@@ -63,6 +64,11 @@ class BeamOptikDLL(object):
     >>> obj = BeamOptikDLL.load_library()
     >>> obj.GetInterfaceInstance()
     """
+
+    if platform.architecture()[0] == '64bit':
+        filename = 'BeamOptikDLL64.dll'
+    else:
+        filename = 'BeamOptikDLL.dll'
 
     #----------------------------------------
     # internal methods
@@ -123,9 +129,12 @@ class BeamOptikDLL(object):
     #----------------------------------------
 
     @classmethod
-    def load_library(cls, filename='BeamOptikDLL.dll'):
+    def load_library(cls, filename=filename):
         """
         Search for the DLL in PATH and return a BeamOptikDLL wrapper object.
+
+        NOTE: for the 64bit library, you also need 'ParamDownloads64.dll' in
+        your PATH.
         """
         try:
             return cls(ctypes.windll.LoadLibrary(filename))
