@@ -47,6 +47,7 @@ def main():
 
     app = QtGui.QApplication(sys.argv)
     ns = {}
+    ns['exit'] = sys.exit
     window = MainWindow(ns)
 
     ns['window'] = window

@@ -11,7 +11,7 @@ import json
 import yaml
 
 from pydicti import dicti
-from madgui.util import unit
+from madqt.core import unit
 from .util import csv_unicode_reader, yaml_load_unicode
 
 

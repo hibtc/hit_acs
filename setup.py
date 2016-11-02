@@ -39,8 +39,9 @@ def main():
             'gui_scripts': [
                 'online_control = hit.online_control.__main__:main'
             ],
-            'madgui.entry_points': [
-                'online_control = hit.online_control:entry_points'
+            'madqt.online.PluginLoader': [
+                'stub = hit.online_control.plugin:StubLoader',
+                'dll = hit.online_control.plugin:DllLoader',
             ]
         },
         install_requires=[

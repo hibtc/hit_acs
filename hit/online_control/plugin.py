@@ -12,10 +12,10 @@ from .util import load_yaml_resource
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .stub import BeamOptikDllProxy
 
-from madgui.core.plugin import HookCollection
-from madgui.core import wx
-from madgui.util import unit
-from madgui.online import api
+from madqt.core.base import Object, Signal
+from madqt.qt import QtGui
+from madqt.core import unit
+from madqt.online import api
 
 from .dvm_parameters import DVM_ParameterList
 
@@ -31,11 +31,13 @@ class StubLoader(api.PluginLoader):
 
     @classmethod
     def load(cls, frame):
-        logger = frame.getLogger('hit.online_control.stub')
+        # logger = frame.getLogger('hit.online_control.stub')
+        import logging
+        logger = logging.getLogger('hit.online_control.stub')
         proxy = BeamOptikDllProxy({}, logger)
         dvm = BeamOptikDLL(proxy)
         mgr = DVM_Param_Manager(dvm, frame)
-        mgr.hook.on_loaded_dvm_params.connect(
+        mgr.on_loaded_dvm_params.connect(
             proxy._use_dvm_parameter_examples)
         return HitOnlineControl(dvm, mgr)
 
@@ -57,19 +59,20 @@ class DllLoader(api.PluginLoader):
         return HitOnlineControl(dvm, mgr)
 
 
-class DVM_Param_Manager(object):
+class DVM_Param_Manager(Object):
+
+    on_loaded_dvm_params = Signal(object)
 
     def __init__(self, dvm, frame=None):
+        super(DVM_Param_Manager, self).__init__()
         self._dvm = dvm
         self._frame = frame
         self._cache = {}
-        self.hook = HookCollection(
-            on_loaded_dvm_params=None)
 
     def get(self, segment):
         if segment not in self._cache:
             self._cache[segment] = dvm_params = self._load(segment)
-            self.hook.on_loaded_dvm_params(dvm_params)
+            self.on_loaded_dvm_params.emit(dvm_params)
         return self._cache[segment]
 
     def _elem_param_dict(self, el_name, parlist):
@@ -90,7 +93,7 @@ class DVM_Param_Manager(object):
 
     def _load(self, segment):
         try:
-            repo = segment.session.repo
+            repo = segment.universe.repo
             data = repo.yaml('dvm.yml')
             parlist = DVM_ParameterList.from_yaml_data(data)
         # TODO: catch IOError or similar
@@ -102,22 +105,25 @@ class DVM_Param_Manager(object):
 
     def _load_from_disc(self):
         """Show a FileDialog to import a new DVM parameter list."""
-        dlg = wx.FileDialog(
-            self._frame,
-            "Load DVM-Parameter list. The CSV file must be ';' separated and 'utf-8' encoded.",
-            wildcard="CSV files (*.csv)|*.csv",
-            style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST)
-        if dlg.ShowModal() != wx.ID_OK:
-            return
-        filename = dlg.GetPath()
+        from madqt.util.filedialog import getOpenFileName
+        filters = [
+            ("CSV files", "*.csv"),
+        ]
+        message = "Load DVM-Parameter list. The CSV file must be ';' separated and 'utf-8' encoded."
         # TODO: let user choose the correct delimiter/encoding settings
+        filename = getOpenFileName(
+            self._frame, message, self._frame.folder, filters)
+        if filename:
+            return self.load_param_file(filename)
+
+    def load_param_file(self, filename):
         try:
             return DVM_ParameterList.from_csv(filename, 'utf-8')
         except UnicodeDecodeError:
-            wx.MessageBox('I can only load UTF-8 encoded files!',
-                          'UnicodeDecodeError',
-                          wx.ICON_ERROR|wx.OK,
-                          parent=self._frame)
+            QtGui.QMessageBox.critical(
+                self._frame,
+                'I can only load UTF-8 encoded files!',
+                'UnicodeDecodeError')
 
 
 def _get_value(dvm, par_unit, dvm_name):
@@ -145,8 +151,8 @@ class HitOnlineControl(api.OnlinePlugin):
         self._dvm = dvm
         self._mgr = mgr
         self._config = load_yaml_resource('hit.online_control', 'config.yml')
-        self._utool = unit.UnitConverter(
-            unit.from_config_dict(self._config['units']))
+        self._utool = unit.UnitConverter.from_config_dict(
+            self._config['units'])
         self._connect()
 
     def _connect(self):

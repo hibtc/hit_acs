@@ -1,6 +1,6 @@
 """
 Loads BeamOptikDLL in a python process and waits in a simple win32 message
-loop. This module does not provide any custom/interactive GUI apart from the 
+loop. This module does not provide any custom/interactive GUI apart from the
 GUI provided by BeamOptikDLL itself.
 """
 
