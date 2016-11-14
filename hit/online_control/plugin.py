@@ -24,6 +24,7 @@ class StubLoader(api.PluginLoader):
 
     title = '&test stub'
     descr = 'a stub version (for offline testing)'
+    hotkey = 'Ctrl+C'
 
     @classmethod
     def check_avail(cls):
@@ -46,6 +47,7 @@ class DllLoader(api.PluginLoader):
 
     title = '&online control'
     descr = 'the online control'
+    hotkey = None
 
     @classmethod
     def check_avail(cls):
