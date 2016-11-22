@@ -6,10 +6,16 @@ interface.
 """
 
 from collections import namedtuple
-from ctypes import c_double as Double, c_char_p as Str, c_int as Int
+from ctypes import c_double as Double, c_int as Int
 import ctypes
 import logging
 import platform
+
+
+if platform.architecture()[0] == '64bit':
+    Str = c_wchar_p
+else:
+    Str = c_char_p
 
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
