@@ -29,16 +29,26 @@ class MainWindow(QtGui.QMainWindow):
 
     def __init__(self, namespace):
         QtGui.QMainWindow.__init__(self)
+        self.ns = namespace
         self.shell = InternalShell(self, namespace=namespace)
         # self.shell.interpreter.restore_stds()
         self.shell.set_codecompletion_auto(True)
         self.shell.set_codecompletion_enter(True)
         self.shell.set_calltips(True)
         self.setCentralWidget(self.shell)
+        QtCore.QTimer.singleShot(0, self.load_dll)
 
     def closeEvent(self, event):
         self.shell.exit_interpreter()
         event.accept()
+
+    def load_dll(self):
+        ns = self.ns
+        ns['window'] = self
+        ns['dvm'] = BeamOptikDLL.load_library()
+        # proxy = BeamOptikDllProxy({})
+        # ns['dvm'] = BeamOptikDLL(proxy)
+        ns['dvm'].GetInterfaceInstance()
 
 
 def main():
@@ -49,12 +59,6 @@ def main():
     ns = {}
     ns['exit'] = sys.exit
     window = MainWindow(ns)
-
-    ns['window'] = window
-    # ns['dvm'] = BeamOptikDLL.load_library()
-    proxy = BeamOptikDllProxy({})
-    ns['dvm'] = BeamOptikDLL(proxy)
-    ns['dvm'].GetInterfaceInstance()
 
     logging.basicConfig(level=logging.INFO)
 
