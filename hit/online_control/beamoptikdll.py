@@ -13,9 +13,9 @@ import platform
 
 
 if platform.architecture()[0] == '64bit':
-    Str = c_wchar_p
+    Str = ctypes.c_wchar_p
 else:
-    Str = c_char_p
+    Str = ctypes.c_char_p
 
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
