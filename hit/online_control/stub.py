@@ -5,11 +5,13 @@ offline testing of the basic functionality.
 """
 
 import functools
-from ctypes import c_char_p
+import ctypes
 
 from pydicti import dicti
 
 from . import beamoptikdll
+
+c_str = ctypes.c_char_p, ctypes.c_wchar_p
 
 
 __all__ = [
@@ -19,7 +21,7 @@ __all__ = [
 
 def _unbox(param):
     """Unbox a call parameter created by ctypes.byref."""
-    return param.value if isinstance(param, c_char_p) else param._obj
+    return param.value if isinstance(param, c_str) else param._obj
 
 
 def _api_meth(func):
