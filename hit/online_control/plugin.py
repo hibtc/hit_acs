@@ -95,7 +95,7 @@ class DVM_Param_Manager(Object):
 
     def _load(self, segment):
         try:
-            repo = segment.universe.repo
+            repo = segment.workspace.repo
             data = repo.yaml('dvm.yml')
             parlist = DVM_ParameterList.from_yaml_data(data)
         # TODO: catch IOError or similar
