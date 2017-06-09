@@ -18,11 +18,29 @@ import sys
 import signal
 import logging
 
-from spyderlib.widgets.internalshell import InternalShell
-from PyQt4 import QtCore, QtGui
+from qtconsole.rich_jupyter_widget import RichJupyterWidget
+from qtconsole.inprocess import QtInProcessKernelManager
+from qtconsole.qt import QtCore, QtGui
 
 from hit.online_control.beamoptikdll import BeamOptikDLL
 from hit.online_control.stub import BeamOptikDllProxy
+
+
+def create(user_ns):
+    """Create an in-process kernel."""
+    manager = QtInProcessKernelManager()
+    manager.start_kernel(show_banner=False)
+    kernel = manager.kernel
+    kernel.gui = 'qt4'
+    kernel.user_ns = user_ns
+
+    client = manager.client()
+    client.start_channels()
+
+    widget = RichJupyterWidget()
+    widget.kernel_manager = manager
+    widget.kernel_client = client
+    return widget
 
 
 class MainWindow(QtGui.QMainWindow):
@@ -30,16 +48,12 @@ class MainWindow(QtGui.QMainWindow):
     def __init__(self, namespace):
         QtGui.QMainWindow.__init__(self)
         self.ns = namespace
-        self.shell = InternalShell(self, namespace=namespace)
+        self.shell = create(namespace)
         # self.shell.interpreter.restore_stds()
-        self.shell.set_codecompletion_auto(True)
-        self.shell.set_codecompletion_enter(True)
-        self.shell.set_calltips(True)
         self.setCentralWidget(self.shell)
         QtCore.QTimer.singleShot(0, self.load_dll)
 
     def closeEvent(self, event):
-        self.shell.exit_interpreter()
         event.accept()
 
     def load_dll(self):
