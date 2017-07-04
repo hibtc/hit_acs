@@ -35,7 +35,7 @@ class StubLoader(api.PluginLoader):
         # logger = frame.getLogger('hit.online_control.stub')
         import logging
         logger = logging.getLogger('hit.online_control.stub')
-        proxy = BeamOptikDllProxy({}, logger)
+        proxy = BeamOptikDllProxy({}, frame.workspace.segment, logger)
         dvm = BeamOptikDLL(proxy)
         mgr = DVM_Param_Manager(dvm, frame)
         mgr.on_loaded_dvm_params.connect(

@@ -11,6 +11,8 @@ from pydicti import dicti
 
 from . import beamoptikdll
 
+import random
+
 c_str = ctypes.c_char_p, ctypes.c_wchar_p
 
 
@@ -67,12 +69,14 @@ class BeamOptikDllProxy(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, data, logger=None):
+    def __init__(self, data, segment, logger=None):
         """Initialize new library instance with no interface instances."""
         self.data = data
         self.instances = {}
         self.logger = logger
         self.next_iid = 0
+        self.segment = segment
+        self.jitter = True
 
     def _use_dvm_parameter_examples(self, dvm_params):
         """
@@ -175,9 +179,27 @@ class BeamOptikDllProxy(object):
     def GetFloatValueSD(self, iid, name, value, options):
         """Get beam diagnostic value."""
         assert self.instances[iid.value]
-        # TODO: use list of known monitors (data['diagnostic'])
-        value.value = 1.0
-        # value.value = self.data['diagnostic'][name]
+
+        par_name, el_name = name.lower().split('_', 1)
+        index = self.segment.elements.index(el_name)
+
+        cols = {
+            'widthx': 'envx',
+            'widthy': 'envy',
+            'posx': 'posx',
+            'posy': 'posy',
+        }
+        col = cols[par_name]
+        twiss = self.segment.get_twiss_column(col)
+        v = self.segment.utool.strip_unit(col, twiss[index])
+
+        if self.jitter:
+            if par_name in ('widthx', 'widthy'):
+                v *= random.uniform(0.95, 1.1)
+            elif par_name in ('posx', 'posy'):
+                v += random.uniform(-0.0005, 0.0005)
+
+        value.value = v * 1000
 
     @_api_meth
     def GetLastFloatValueSD(self, iid,
