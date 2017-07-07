@@ -234,7 +234,7 @@ class HitOnlineControl(api.OnlinePlugin):
                 for key in conv.backend_keys
             }
         except KeyError:
-            raise api.UnknownElement
+            raise api.UnknownElement(el_name)
         lval = {key: conv.param_info[key] for key in conv.backend_keys}
         back = DBElementBackend(self._dvm, lval)
         return conv, back
