@@ -6,7 +6,7 @@ Python API for talking to the HIT online control/DVM.
 from __future__ import unicode_literals
 
 
-__title__ = 'hit_online_control'
+__title__ = 'hit_csys'
 __summary__ = 'Online control for the HIT accelerator facility.'
 __uri__ = 'https://bitbucket.org/coldfix/hit-online-control'
 
@@ -32,6 +32,6 @@ __classifiers__ = [
 
 entry_points = """
 [madqt.online.PluginLoader]
-stub = hit.online_control.plugin:StubLoader
-dll = hit.online_control.plugin:DllLoader
+stub = hit_csys.plugin:StubLoader
+dll = hit_csys.plugin:DllLoader
 """

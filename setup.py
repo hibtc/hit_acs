@@ -19,9 +19,9 @@ def exec_file(path):
 def main():
     """Execute setup."""
     long_description = read_file('README.rst').decode('utf-8')
-    meta = exec_file('hit/online_control/__init__.py')
+    meta = exec_file('hit_csys/__init__.py')
     setup(
-        name='hit_online_control',
+        name='hit_csys',
         version=meta['__version__'],
         description=meta['__summary__'],
         long_description=long_description,
@@ -31,17 +31,16 @@ def main():
         license=meta['__license__'],
         classifiers=meta['__classifiers__'],
         packages=[
-            'hit',
-            'hit.online_control'
+            'hit_csys',
         ],
-        namespace_packages=['hit'],
+        ],
         entry_points={
             'gui_scripts': [
-                'online_control = hit.online_control.__main__:main'
+                'hit_csys = hit_csys.__main__:main'
             ],
             'madqt.online.PluginLoader': [
-                'stub = hit.online_control.plugin:StubLoader',
-                'dll = hit.online_control.plugin:DllLoader',
+                'stub = hit_csys.plugin:StubLoader',
+                'dll = hit_csys.plugin:DllLoader',
             ]
         },
         install_requires=[

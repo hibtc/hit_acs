@@ -1,2 +1,3 @@
-from hit.online_control.__main__ import main
+from __future__ import absolute_import
+from .__main__ import main
 main()

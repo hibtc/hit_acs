@@ -4,11 +4,13 @@ loop. This module does not provide any custom/interactive GUI apart from the
 GUI provided by BeamOptikDLL itself.
 """
 
+from __future__ import absolute_import
+
 import logging
 import platform
 import win32gui
 
-from hit.online_control.beamoptikdll import BeamOptikDLL
+from .beamoptikdll import BeamOptikDLL
 
 
 def main():

@@ -1,6 +1,6 @@
 """
 Stub class for BeamOptikDLL.dll ctypes proxy objects as used by
-:class:`~hit.online_control.beamoptikdll.BeamOptikDLL`. Primarily used for
+:class:`~hit_csys.beamoptikdll.BeamOptikDLL`. Primarily used for
 offline testing of the basic functionality.
 """
 

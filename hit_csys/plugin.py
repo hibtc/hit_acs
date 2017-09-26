@@ -5,6 +5,8 @@ Madgui online control plugin.
 
 from __future__ import absolute_import
 
+import logging
+
 from pydicti import dicti
 
 from .util import load_yaml_resource
@@ -32,9 +34,8 @@ class StubLoader(api.PluginLoader):
 
     @classmethod
     def load(cls, frame):
-        # logger = frame.getLogger('hit.online_control.stub')
-        import logging
-        logger = logging.getLogger('hit.online_control.stub')
+        # logger = frame.getLogger('hit_csys.stub')
+        logger = logging.getLogger('hit_csys.stub')
         proxy = BeamOptikDllProxy({}, frame.workspace.segment, logger)
         dvm = BeamOptikDLL(proxy)
         mgr = DVM_Param_Manager(dvm, frame)
@@ -152,7 +153,7 @@ class HitOnlineControl(api.OnlinePlugin):
     def __init__(self, dvm, mgr):
         self._dvm = dvm
         self._mgr = mgr
-        self._config = load_yaml_resource('hit.online_control', 'config.yml')
+        self._config = load_yaml_resource('hit_csys', 'config.yml')
         self._utool = unit.UnitConverter.from_config_dict(
             self._config['units'])
         self._connect()

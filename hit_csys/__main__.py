@@ -14,11 +14,13 @@ The DLL is connected on startup and the wrapper object is stored in the
 global variable ``dvm``.
 """
 
+from __future__ import absolute_import
+
 import wx
 import wx.py.crust
 import logging
 
-from hit.online_control.beamoptikdll import BeamOptikDLL
+from .beamoptikdll import BeamOptikDLL
 
 
 class App(wx.App):

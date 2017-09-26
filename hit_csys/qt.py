@@ -14,6 +14,8 @@ The DLL is connected on startup and the wrapper object is stored in the
 global variable ``dvm``.
 """
 
+from __future__ import absolute_import
+
 import sys
 import signal
 import logging
@@ -22,8 +24,8 @@ from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
 from qtconsole.qt import QtCore, QtGui
 
-from hit.online_control.beamoptikdll import BeamOptikDLL
-from hit.online_control.stub import BeamOptikDllProxy
+from .beamoptikdll import BeamOptikDLL
+from .stub import BeamOptikDllProxy
 
 
 def create(user_ns):
