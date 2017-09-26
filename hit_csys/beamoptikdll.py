@@ -1,9 +1,10 @@
 """
-Low level wrapper for the HIT accelerator control software.
-
-Wraps the API of the 'BeamOptikDLL.dll' library to a more pythonic
-interface.
+Python wrapper for 'BeamOptikDLL.dll'.
 """
+
+# NOTE: This module deliberately depends only on the standard library and can
+# therefore be simply included in another application without having to
+# install or provide anything else (except for the actual DLL of course).
 
 from collections import namedtuple
 from ctypes import c_double as Double, c_int as Int
