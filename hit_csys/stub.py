@@ -182,6 +182,7 @@ class BeamOptikDllProxy(object):
 
         par_name, el_name = name.lower().split('_', 1)
         index = self.segment.elements.index(el_name)
+        index = self.segment.indices[index].stop
 
         cols = {
             'widthx': 'envx',
