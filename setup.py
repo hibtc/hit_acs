@@ -33,7 +33,6 @@ def main():
         packages=[
             'hit_csys',
         ],
-        ],
         entry_points={
             'gui_scripts': [
                 'hit_csys = hit_csys.__main__:main'
