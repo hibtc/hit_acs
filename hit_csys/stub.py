@@ -41,9 +41,9 @@ def _api_meth(func):
         done = _unbox(args[idone])
         args = args[:idone] + args[idone+1:]
         done.value = 0
-        unboxed_args = map(_unbox, args)
+        unboxed_args = tuple(map(_unbox, args))
         if self.logger:
-            self.logger.info('{}{}'.format(func.__name__, tuple(unboxed_args)))
+            self.logger.info('{}{}'.format(func.__name__, unboxed_args))
         ret = func(self, *unboxed_args)
         if ret is not None:
             done.value = ret
