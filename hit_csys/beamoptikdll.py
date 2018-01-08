@@ -324,10 +324,20 @@ class BeamOptikDLL(object):
         self._call('ExecuteChanges', self.iid, Int(options))
 
     def SetNewValueCallback(self, callback):
-        """Call SetNewValueCallback(). Not implemented!"""
-        # TODO: docs do not specify when this is actually called
-        # TODO: howto create a python callback? Use Cython?
-        raise NotImplementedError()
+        """
+        Install a callback function that should be called whenever the
+        calculation of a new value is complete (…whatever that means).
+
+        :param callback: ``callable(name:str, val:float, type:int)``
+        :raises RuntimeError: if the exit code indicates any error
+        """
+        PTR = ctypes.POINTER
+        @ctypes.WINFUNCTYPE(None, PTR(Str), PTR(Double), PTR(Int))
+        def c_callback(name, value, type_):
+            return callback(name.value,
+                            value.contents.value,
+                            type_.contents.value)
+        self._call('SetNewValueCallback', self.iid, c_callback)
 
     def GetFloatValueSD(self, name, options=0):
         """
