@@ -161,12 +161,37 @@ class HitOnlineControl(api.OnlinePlugin):
     def _connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
+        self._mgr._frame.workspace_changed.connect(self.on_workspace_changed)
+        self.on_workspace_changed()
 
     # OnlinePlugin API
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
+        self._mgr._frame.workspace_changed.disconnect(self.on_workspace_changed)
+
+    def on_workspace_changed(self):
+        self._set_mefi()
+
+    def _set_mefi(self):
+        segment = self._mgr._frame.workspace.segment
+        NMASS = 931.494095457e-3 # TODO: retrieve from MAD-X, needs >= 5.03.08
+        self._mgr.get(segment)
+        conf = self._config['vacc']
+        anum = self._config['ions']
+        mass = unit.strip_unit(segment.beam['mass'], unit.units.GeV/unit.units.c**2)
+        ion = anum.get(round(mass/NMASS))
+        seq = segment.seq_name
+        vaccs = range(15)
+        vaccs = sorted(set(conf['seq'].get(seq, vaccs)) &
+                       set(conf['ion'].get(ion, vaccs)))
+        if vaccs:
+            self._dvm.SelectVAcc(vaccs[0])
+
+        # NOTE: not updating DVM MEFI values from model for now (SelectMEFI).
+        # It is probably more reliable to let the user choose MEFI in the GUI
+        # and then update the model from the DVM (GetMEFIValue).
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
