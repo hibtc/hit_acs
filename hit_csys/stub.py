@@ -209,8 +209,7 @@ class BeamOptikDllProxy(object):
         """Get beam diagnostic value."""
         # behave exactly like GetFloatValueSD and ignore further parameters
         # for now
-        assert self.instances[iid.value]
-        value.value = self.data['diagnostic'][name]
+        self.GetFloatValueSD.__wrapped__(self, iid, name, value, options)
 
     @_api_meth
     def StartRampDataGeneration(self, iid,
