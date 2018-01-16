@@ -38,6 +38,7 @@ class StubLoader(api.PluginLoader):
         logger = logging.getLogger('hit_csys.stub')
         proxy = BeamOptikDllProxy({}, frame.workspace.segment, logger)
         dvm = BeamOptikDLL(proxy)
+        dvm.on_workspace_changed = proxy.on_workspace_changed
         mgr = DVM_Param_Manager(dvm, frame)
         mgr.on_loaded_dvm_params.connect(
             proxy._use_dvm_parameter_examples)
@@ -173,6 +174,8 @@ class HitOnlineControl(api.OnlinePlugin):
 
     def on_workspace_changed(self):
         self._set_mefi()
+        if hasattr(self._dvm, 'on_workspace_changed'):
+            self._dvm.on_workspace_changed()
 
     def _set_mefi(self):
         segment = self._mgr._frame.workspace.segment

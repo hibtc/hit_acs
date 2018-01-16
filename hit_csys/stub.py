@@ -75,8 +75,11 @@ class BeamOptikDllProxy(object):
         self.instances = {}
         self.logger = logger
         self.next_iid = 0
-        self.segment = segment
+        self.frame = frame
         self.jitter = True
+
+    def on_workspace_changed(self):
+        self.segment = self.frame.workspace.segment
 
     def _use_dvm_parameter_examples(self, dvm_params):
         """
