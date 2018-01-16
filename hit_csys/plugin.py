@@ -201,14 +201,32 @@ class HitOnlineControl(api.OnlinePlugin):
         """Get parameter info for backend key."""
         return self._mgr.get(segment)[el_name][key + '_' + el_name]
 
-    def get_monitor(self, segment, elements):
+    def read_monitor(self, name):
         """
-        Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
-        tuple for a monitor.
+        Read out one monitor, return values as dict with keys:
+
+            widthx:     Beam x width
+            widthy:     Beam y width
+            posx:       Beam x position
+            posy:       Beam y position
         """
-        conv = MonitorConv()
-        back = DBMonitorBackend(self._dvm, elements[0]['name'])
-        return conv, back
+        keys_backend = ('posx', 'posy', 'widthx', 'widthy')
+        keys_internal = ('posx', 'posy', 'envx', 'envy')
+        values = {}
+        for src, dst in zip(keys_backend, keys_internal):
+            # TODO: Handle usability of parameters individually
+            try:
+                val = _get_sd_value(self._dvm, name, src)
+            except RuntimeError:
+                return {}
+            # TODO: move sanity check to later, so values will simply be
+            # unchecked/grayed out, instead of removed completely
+            # The magic number -9999.0 signals corrupt values.
+            # FIXME: Sometimes width=0 is returned. ~ Meaning?
+            if src.startswith('width') and val.magnitude <= 0:
+                return {}
+            values[dst] = val
+        return values
 
     def get_dipole(self, segment, elements, skew):
         """
@@ -286,46 +304,11 @@ class DBElementBackend(api.ElementBackend):
             _set_value(self._dvm, par.unit, par.name, val)
 
 
-class DBMonitorBackend(api.ElementBackend):
-
-    """Mitigates read access to a monitor."""
-
-    def __init__(self, dvm, el_name):
-        self._dvm = dvm
-        self._el_name = el_name
-
-    def get(self):
-        """Read out one SD monitor."""
-        values = {}
-        for feature in ('widthx', 'widthy', 'posx', 'posy'):
-            # TODO: Handle usability of parameters individually
-            try:
-                val = _get_sd_value(self._dvm, self._el_name, feature)
-            except RuntimeError:
-                return {}
-            # TODO: move sanity check to later, so values will simply be
-            # unchecked/grayed out, instead of removed completely
-            # The magic number -9999.0 signals corrupt values.
-            # FIXME: Sometimes width=0 is returned. ~ Meaning?
-            if feature.startswith('width') and val.magnitude <= 0:
-                return {}
-            values[feature] = val
-        return values
-
-    def set(self, values):
-        raise NotImplementedError("Can't set TWISS: monitors are read-only!")
-
-
 #----------------------------------------
 # Converters:
 #----------------------------------------
 
 # TODO: handle more complicated elements (see HICAT bible)
-
-class MonitorConv(api.NoConversion):
-    standard_keys = ['posx', 'posy', 'envx', 'envy']
-    backend_keys = ['posx', 'posy', 'widthx', 'widthy']
-
 
 class DipoleHConv(api.NoConversion):
     standard_keys = ['angle']
