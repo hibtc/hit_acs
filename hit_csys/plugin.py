@@ -157,15 +157,14 @@ class HitOnlineControl(api.OnlinePlugin):
         self._config = load_yaml_resource('hit_csys', 'config.yml')
         self._utool = unit.UnitConverter.from_config_dict(
             self._config['units'])
-        self._connect()
 
-    def _connect(self):
+    # OnlinePlugin API
+
+    def connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
         self._mgr._frame.workspace_changed.connect(self.on_workspace_changed)
         self.on_workspace_changed()
-
-    # OnlinePlugin API
 
     def disconnect(self):
         """Disconnect from online database."""
