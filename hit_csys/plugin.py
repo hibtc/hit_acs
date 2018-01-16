@@ -36,12 +36,10 @@ class StubLoader(api.PluginLoader):
     def load(cls, frame):
         # logger = frame.getLogger('hit_csys.stub')
         logger = logging.getLogger('hit_csys.stub')
-        proxy = BeamOptikDllProxy({}, frame.workspace.segment, logger)
+        proxy = BeamOptikDllProxy(frame, logger)
         dvm = BeamOptikDLL(proxy)
         dvm.on_workspace_changed = proxy.on_workspace_changed
         mgr = DVM_Param_Manager(dvm, frame)
-        mgr.on_loaded_dvm_params.connect(
-            proxy._use_dvm_parameter_examples)
         return HitOnlineControl(dvm, mgr)
 
 

@@ -69,9 +69,9 @@ class BeamOptikDllProxy(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, data, segment, logger=None):
+    def __init__(self, frame, logger=None):
         """Initialize new library instance with no interface instances."""
-        self.data = data
+        self.params = {}
         self.instances = {}
         self.logger = logger
         self.next_iid = 0
@@ -80,19 +80,11 @@ class BeamOptikDllProxy(object):
 
     def on_workspace_changed(self):
         self.segment = self.frame.workspace.segment
-
-    def _use_dvm_parameter_examples(self, dvm_params):
-        """
-        Initialize DVM parameter values from examples as given in an imported
-        DVM parameter list.
-
-        :param dict dvm_params: list of :class:`DVM_Parameter`
-        """
-        # support a 'dvm_params_map' {element name: [DVM_Parameter]}:
-        self.data['control'] = dicti(
-            (param.name, _get_param_example_value(param))
-            for parlist in dvm_params.values()
-            for param in parlist.values())
+        self.params.clear()
+        self.frame.control.write_all()
+        if self.jitter:
+            for k in self.params:
+                self.params[k] *= random.uniform(0.95, 1.1)
 
     @_api_meth
     def DisableMessageBoxes(self):
@@ -156,17 +148,13 @@ class BeamOptikDllProxy(object):
     def GetFloatValue(self, iid, name, value, options):
         """Get a float value from the "database"."""
         assert self.instances[iid.value]
-        v = self.data['control'][name]
-        if v is None:
-            value.value = 0
-        else:
-            value.value = float(v)
+        value.value = float(self.params.get(name, 0))
 
     @_api_meth
     def SetFloatValue(self, iid, name, value, options):
         """Store a float value to the "database"."""
         assert self.instances[iid.value]
-        self.data['control'][name] = value.value
+        self.params[name] = value.value
 
     @_api_meth
     def ExecuteChanges(self, iid, options):
