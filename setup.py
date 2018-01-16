@@ -35,7 +35,7 @@ def main():
         ],
         entry_points={
             'gui_scripts': [
-                'hit_csys = hit_csys.__main__:main'
+                'hit_csys = hit_csys.gui_wx:main'
             ],
             'madqt.online.PluginLoader': [
                 'stub = hit_csys.plugin:StubLoader',
