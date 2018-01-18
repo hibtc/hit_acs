@@ -128,18 +128,6 @@ class DVM_Param_Manager(Object):
                 'UnicodeDecodeError')
 
 
-def _get_value(dvm, par_unit, dvm_name):
-    """Get a single value from the online database with unit."""
-    plain_value = dvm.GetFloatValue(dvm_name)
-    return plain_value * par_unit
-
-
-def _set_value(dvm, par_unit, dvm_name, value):
-    """Set a single parameter in the online database with unit."""
-    plain_value = unit.strip_unit(value, par_unit)
-    dvm.SetFloatValue(dvm_name, plain_value)
-
-
 def _get_sd_value(dvm, el_name, param_name):
     """Return a single SD value (with unit)."""
     sd_name = param_name + '_' + el_name
@@ -175,7 +163,7 @@ class HitOnlineControl(api.OnlinePlugin):
             self._dvm.on_workspace_changed()
 
     def _set_mefi(self):
-        segment = self._mgr._frame.workspace.segment
+        segment = self._segment
         NMASS = 931.494095457e-3 # TODO: retrieve from MAD-X, needs >= 5.03.08
         self._mgr.get(segment)
         conf = self._config['vacc']
@@ -193,13 +181,23 @@ class HitOnlineControl(api.OnlinePlugin):
         # It is probably more reliable to let the user choose MEFI in the GUI
         # and then update the model from the DVM (GetMEFIValue).
 
+    @property
+    def _segment(self):
+        return self._mgr._frame.workspace.segment
+
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
         self._dvm.ExecuteChanges(options)
 
-    def param_info(self, segment, el_name, key):
+    def param_info(self, knob):
         """Get parameter info for backend key."""
-        return self._mgr.get(segment)[el_name][key + '_' + el_name]
+        if isinstance(knob, Knob):
+            return knob.info
+        el_name = knob.split('_', 1)[1]
+        try:
+            return self._mgr.get(self._segment)[el_name][knob]
+        except KeyError:
+            return None
 
     def read_monitor(self, name):
         """
@@ -228,118 +226,50 @@ class HitOnlineControl(api.OnlinePlugin):
             values[dst] = val
         return values
 
-    def get_dipole(self, segment, elements, skew):
-        """
-        Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
-        tuple for a dipole.
-        """
-        el_name = elements[0]['name']
-        geom_symb = 'a' + ('y' if skew else 'x') + 'geo'
-        geom_parm = geom_symb + '_' + el_name
-        el_pars = self._mgr.get(segment).get(el_name, {})
-        if geom_parm in el_pars:
-            conv = (DipoleVBigConv if skew else DipoleHBigConv)()
-        else:
-            conv = (DipoleVConv if skew else DipoleHConv)()
-        return self._construct(segment, elements[0]['name'], conv)
+    def get_knob(self, elem, attr):
+        """Return a :class:`Knob` belonging to the given attribute."""
+        attr = attr.lower()
+        el_name = elem['name'].lower()
+        el_type = elem['type'].lower()
+        if '_' in el_name:
+            body, suffix = el_name.rsplit('_', 1)
+            if suffix == 'corr' and attr == 'kick':
+                el_name = body
+        el_pars = self._mgr.get(self._segment).get(el_name, {})
+        el_expr = getattr(elem[attr], '_expression', '').lower()
+        prefixes = [el_expr.split('_')[0]] if el_expr else []
+        prefixes += PREFIXES.get((el_type, attr), [])
+        for prefix in prefixes:
+            param = el_pars.get(prefix + '_' + el_name)
+            if param:
+                return Knob(self, elem, attr, param)
 
-    def get_quadrupole(self, segment, elements):
-        """
-        Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
-        tuple for a quadrupole.
-        """
-        return self._construct(segment, elements[0]['name'], QuadrupoleConv())
+    def read_param(self, param):
+        """Read parameter. Return numeric value. No units!"""
+        return self._dvm.GetFloatValue(param)
 
-    def get_solenoid(self, segment, elements):
-        """
-        Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
-        tuple for a solenoid.
-        """
-        return self._construct(segment, elements[0]['name'], SolenoidConv())
-
-    def get_kicker(self, segment, elements, skew):
-        """
-        Get a (:class:`ElementBackendConverter`, :class:`ElementBackend`)
-        tuple for a kicker.
-        """
-        try:
-            key = elements[0]['kick']._expression.split('_')[0]
-        except AttributeError:
-            key = 'day' if skew else 'dax'
-        conv = KickerConv(key)
-        # the dax_ param is stored with the main magnet:
-        el_name = elements[0]['name'].split('_')[0]
-        return self._construct(segment, el_name, conv)
-
-    def _construct(self, segment, el_name, conv):
-        try:
-            conv.param_info = {
-                key: self.param_info(segment, el_name, key)
-                for key in conv.backend_keys
-            }
-        except KeyError:
-            raise api.UnknownElement(el_name)
-        lval = {key: conv.param_info[key] for key in conv.backend_keys}
-        back = DBElementBackend(self._dvm, lval)
-        return conv, back
+    def write_param(self, param, value):
+        """Update parameter into control system. No units!"""
+        self._dvm.SetFloatValue(param, value)
 
 
-class DBElementBackend(api.ElementBackend):
+# NOTE: order is important, so keep 'dax' before 'ax', etc:
+PREFIXES = {
+    ('sbend',   'angle'):  ['ax'],
+    ('quadrupole', 'k1'):  ['kl'],
+    ('hkicker',  'kick'):  ['dax', 'ax'],
+    ('vkicker',  'kick'):  ['day', 'ay'],
+    ('solenoid',   'ks'):  ['ks'],
+    ('multipole', 'knl[0]'):  ['dax', 'ax'],
+    ('multipole', 'ksl[0]'):  ['day', 'ay'],
+}
 
-    """Mitigates r/w access to the properties of an element."""
-
-    def __init__(self, dvm, lval):
-        self._dvm = dvm
-        self._pars = lval
-
-    def get(self):
-        """Get dict of values from the DB."""
-        return {key: _get_value(self._dvm, par.unit, par.name)
-                for key, par in self._pars.items()}
-
-    def set(self, values):
-        """Store values to DB."""
-        for key, val in values.items():
-            par = self._pars[key]
-            _set_value(self._dvm, par.unit, par.name, val)
+CSYS_ATTR = { 'k1': 'kl' }
 
 
-#----------------------------------------
-# Converters:
-#----------------------------------------
+class Knob(api.Knob):
 
-# TODO: handle more complicated elements (see HICAT bible)
-
-class DipoleHConv(api.NoConversion):
-    standard_keys = ['angle']
-    backend_keys = ['ax']
-
-
-class DipoleVConv(api.NoConversion):
-    standard_keys = ['angle']
-    backend_keys = ['ay']
-
-
-class DipoleHBigConv(api.NoConversion):
-    standard_keys = ['angle']
-    backend_keys = ['axgeo']
-
-
-class DipoleVBigConv(api.NoConversion):
-    standard_keys = ['angle']
-    backend_keys = ['aygeo']
-
-
-class QuadrupoleConv(api.NoConversion):
-    standard_keys = backend_keys = ['kL']
-
-
-class SolenoidConv(api.NoConversion):
-    standard_keys = backend_keys = ['ks']
-
-
-class KickerConv(api.NoConversion):
-    standard_keys = ['angle']
-
-    def __init__(self, key):
-        self.backend_keys = [key]
+    def __init__(self, plug, elem, attr, param):
+        super().__init__(plug, elem, CSYS_ATTR.get(attr, attr),
+                         param.name, param.unit)
+        self.info = param
