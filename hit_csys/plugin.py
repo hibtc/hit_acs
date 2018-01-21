@@ -267,6 +267,20 @@ class HitOnlineControl(api.OnlinePlugin):
         """Update parameter into control system. No units!"""
         self._dvm.SetFloatValue(param, value)
 
+    def get_beam(self):
+        units       = unit.units
+        vacc        = self._dvm.GetSelectedVAcc()
+        particle    = ('C', 'p', 'He')[vacc // 5]
+        charge      = (  6,   1,    2)[vacc // 5]      # hebt, TODO: He?
+        nucl_num    = ( 12,   1,    3)[vacc // 5]      # hebt, TODO: He?
+        e_kin_per_u = self._dvm.GetMEFIValue()[0][0] * units.MeV / units.u
+        return {
+            'particle': particle,
+            'charge':   charge   *  units.e,
+            'mass':     nucl_num * units.u,
+            'energy':   nucl_num * units.u * (1*units.c**2 + e_kin_per_u),
+        }
+
 
 # NOTE: order is important, so keep 'dax' before 'ax', etc:
 PREFIXES = {
