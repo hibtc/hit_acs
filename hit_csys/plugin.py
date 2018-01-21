@@ -19,7 +19,7 @@ from madqt.qt import QtGui
 from madqt.core import unit
 from madqt.online import api
 
-from .dvm_parameters import DVM_ParameterList
+from .dvm_parameters import DVM_ParameterList, DVM_Parameter
 
 
 class StubLoader(api.PluginLoader):
@@ -243,6 +243,21 @@ class HitOnlineControl(api.OnlinePlugin):
             param = el_pars.get(prefix + '_' + el_name)
             if param:
                 return Knob(self, elem, attr, param)
+        if  (el_name.startswith('gant') and
+             el_type == 'srotation' and
+             attr =='angle'):
+            param = DVM_Parameter(
+                name='gantry_angle',
+                ui_name='gantry_angle',
+                ui_hint='',
+                ui_prec=3,
+                unit='°',
+                ui_unit='°',
+                ui_conv=1,
+                example=0,
+            )
+            return MEFI_Param(self, elem, 'gantry', param, 3)
+
 
     def read_param(self, param):
         """Read parameter. Return numeric value. No units!"""
@@ -273,3 +288,18 @@ class Knob(api.Knob):
         super().__init__(plug, elem, CSYS_ATTR.get(attr, attr),
                          param.name, param.unit)
         self.info = param
+
+
+class MEFI_Param(Knob):
+
+    def __init__(self, plug, elem, attr, param, idx):
+        super().__init__(plug, elem, attr, param)
+        self.idx = idx
+
+    def read(self):
+        return self.plug._dvm.GetMEFIValue()[0][self.idx]
+
+    def write(self, value):
+        pass
+        #raise NotImplementedError(
+        #    "Must change MEFI parameters via BeamOptikDLL GUI")
