@@ -3,14 +3,10 @@
 Tools to work with DVM paramater list.
 """
 
-from __future__ import absolute_import
-
 from collections import namedtuple
 
-import json
-
 from madqt.core import unit
-from .util import csv_unicode_reader
+from hit_csys.util import csv_unicode_reader
 
 
 DVM_Parameter = namedtuple('DVM_Parameter', [
@@ -30,10 +26,6 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
 
 def CsvStr(s):
     return s
-
-
-def CsvBool(s):
-    return s == 'ja' if s else None
 
 
 def CsvInt(s):
@@ -125,13 +117,13 @@ _csv_column_names = [
 ]
 
 _csv_column_types = {
-    'name': CsvStr,
-    'ui_name': CsvStr,
-    'ui_hint': CsvStr,
-    'ui_prec': CsvInt,
-    'unit': CsvUnit,
-    'ui_unit': CsvUnit,
-    'ui_conv': CsvFloat,
+    'name':     CsvStr,
+    'ui_name':  CsvStr,
+    'ui_hint':  CsvStr,
+    'ui_prec':  CsvInt,
+    'unit':     CsvUnit,
+    'ui_unit':  CsvUnit,
+    'ui_conv':  CsvFloat,
 }
 
 # inverse map of _csv_columns[i] (used columns)
