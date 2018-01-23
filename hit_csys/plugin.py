@@ -195,7 +195,6 @@ class HitOnlineControl(api.OnlinePlugin):
                 unit='°',
                 ui_unit='°',
                 ui_conv=1,
-                example=0,
             )
             return MEFI_Param(self, elem, 'gantry', param, 3)
 
