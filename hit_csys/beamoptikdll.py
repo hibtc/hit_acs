@@ -13,10 +13,21 @@ import logging
 import platform
 
 
+def _encode(s):
+    return s if isinstance(s, bytes) else s.encode('utf-8')
+
+def _decode(s):
+    return s.decode('utf-8') if isinstance(s, bytes) else s
+
+
 if platform.architecture()[0] == '64bit':
-    Str = ctypes.c_wchar_p
+    _Str = ctypes.c_wchar_p         # constructor wants unicode
+    def Str(s):
+        return _Str(_decode(s))
 else:
-    Str = ctypes.c_char_p
+    _Str = ctypes.c_char_p          # constructor wants bytes
+    def Str(s):
+        return _Str(_encode(s))
 
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
@@ -125,9 +136,9 @@ class BeamOptikDLL(object):
         else:
             params.append(done)
         def param(p):
-            return p if isinstance(p, Str) else ctypes.byref(p)
+            return p if isinstance(p, _Str) else ctypes.byref(p)
         func = getattr(self.lib, function)
-        args = map(param, params)
+        args = tuple(map(param, params))
         func(*args)
         self.check_return(done.value)
 
@@ -332,9 +343,9 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
         """
         PTR = ctypes.POINTER
-        @ctypes.WINFUNCTYPE(None, PTR(Str), PTR(Double), PTR(Int))
+        @ctypes.WINFUNCTYPE(None, PTR(_Str), PTR(Double), PTR(Int))
         def c_callback(name, value, type_):
-            return callback(name.value,
+            return callback(_decode(name.value),
                             value.contents.value,
                             type_.contents.value)
         self._call('SetNewValueCallback', self.iid, c_callback)
