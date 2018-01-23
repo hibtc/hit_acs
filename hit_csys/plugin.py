@@ -6,7 +6,10 @@ Madgui online control plugin.
 from __future__ import absolute_import
 
 import logging
-from pkg_resources import resource_stream
+try:
+    from importlib.resources import resource_stream     # faster import
+except ImportError:
+    from pkg_resources import resource_stream
 
 from pydicti import dicti
 
