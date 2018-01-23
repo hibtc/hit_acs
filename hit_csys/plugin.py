@@ -6,6 +6,7 @@ Madgui online control plugin.
 from __future__ import absolute_import
 
 import logging
+import itertools
 try:
     from importlib.resources import resource_stream     # faster import
 except ImportError:
@@ -68,24 +69,9 @@ class DllLoader(api.PluginLoader):
 def load_dvm_parameters():
     with resource_stream('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv') as f:
         parlist = load_csv(f, 'utf-8')
-    def elem_param_dict(el_name, parlist):
-        ret = dicti((p.name, p) for p in parlist)
-        # NOTE: the following is an ugly hack to correct for missing suffixes
-        # for some of the DB parameters. It would better to find a solution
-        # that is not hard-coded.
-        el_name = el_name.lower()
-        if el_name.endswith('h') or el_name.endswith('v'):
-            update = {}
-            el_prefix = el_name[:-1]
-            el_suffix = el_name[-1]
-            for k, v in ret.items():
-                if k.lower().endswith('_' + el_prefix):
-                    update[k+el_suffix] = v
-            ret.update(update)
-        return ret
     return dicti(
-        (k, elem_param_dict(k, l))
-        for k, l in parlist.items())
+        (el_name, dicti((p.name, p) for p in params))
+        for el_name, params in parlist)
 
 
 def _get_sd_value(dvm, el_name, param_name):
@@ -176,12 +162,18 @@ class HitOnlineControl(api.OnlinePlugin):
             body, suffix = el_name.rsplit('_', 1)
             if suffix == 'corr' and attr == 'kick':
                 el_name = body
+        # Sometimes the parameter name does not include the element H/V
+        # suffix, e.g.: R1MS1H -> ax_R1MS1, R1MS1V -> ay_R1MS1
+        if el_name[-1:] in 'hv':
+            suffixes = [el_name, el_name[:-1]]
+        else:
+            suffixes = [el_name]
         el_pars = self._params.get(el_name, {})
         el_expr = getattr(elem[attr], '_expression', '').lower()
         prefixes = [el_expr.split('_')[0]] if el_expr else []
         prefixes += PREFIXES.get((el_type, attr), [])
-        for prefix in prefixes:
-            param = el_pars.get(prefix + '_' + el_name)
+        for prefix, suffix in itertools.product(prefixes, suffixes):
+            param = el_pars.get(prefix + '_' + suffix)
             if param:
                 return Knob(self, elem, attr, param)
         if  (el_name.startswith('gant') and

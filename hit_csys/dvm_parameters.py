@@ -9,7 +9,6 @@ from collections import namedtuple
 
 import json
 
-from pydicti import dicti
 from madqt.core import unit
 from .util import csv_unicode_reader
 
@@ -64,7 +63,7 @@ def load_csv(lines, encoding='utf-8', delimiter=';'):
 
 
 def load_csv_data(rows):
-    return dicti(_parse_csv_data(rows))
+    return _parse_csv_data(rows)
 
 
 def _parse_csv_data(rows):
