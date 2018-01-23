@@ -18,18 +18,16 @@ __all__ = [
 
 
 if sys.version_info[0] < 3:
-    def csv_unicode_reader(filename, encoding='utf-8', **kwargs):
+    def csv_unicode_reader(lines, encoding='utf-8', **kwargs):
         """Load unicode CSV file."""
-        with open(filename, 'rb') as f:
-            csv_data = f
-            for row in csv.reader(csv_data, **kwargs):
-                yield [e.decode(encoding) for e in row]
+        return [[r.decode(encoding) for r in row]
+                for row in csv.reader(stream, **kwargs)]
 
 else:
-    def csv_unicode_reader(filename, encoding='utf-8', **kwargs):
+    def csv_unicode_reader(lines, encoding='utf-8', **kwargs):
         """Load unicode CSV file."""
-        with open(filename, 'rt', encoding=encoding) as f:
-            return csv.reader(list(f), **kwargs)
+        lines = [l.decode(encoding) for l in lines]
+        return csv.reader(lines, **kwargs)
 
 
 def yaml_load_unicode(stream, Loader=yaml.SafeLoader):

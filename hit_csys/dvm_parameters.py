@@ -55,15 +55,13 @@ def CsvUnit(s):
     return unit.from_config(s)
 
 
-def load_csv(filename, encoding='utf-8', delimiter=';'):
+def load_csv(lines, encoding='utf-8', delimiter=';'):
     """
     Parse DVM parameters from CSV file exported from XLS documentation
     spreadsheet (e.g. DVM-Parameter_v2.10.0-10-HIT.xls)
     """
-    csv_data = csv_unicode_reader(filename,
-                                  encoding=encoding,
-                                  delimiter=delimiter)
-    return load_csv_data(csv_data)
+    return load_csv_data(csv_unicode_reader(
+        lines, encoding=encoding, delimiter=delimiter))
 
 
 def load_csv_data(rows):

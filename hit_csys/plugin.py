@@ -6,6 +6,7 @@ Madgui online control plugin.
 from __future__ import absolute_import
 
 import logging
+from pkg_resources import resource_stream
 
 from pydicti import dicti
 
@@ -18,7 +19,6 @@ from madqt.core.base import Object, Signal
 from madqt.qt import QtGui
 from madqt.core import unit
 from madqt.online import api
-from madqt.resource.package import PackageResource
 
 from .dvm_parameters import load_csv, DVM_Parameter
 
@@ -63,9 +63,8 @@ class DllLoader(api.PluginLoader):
 
 
 def load_dvm_parameters():
-    data = PackageResource('hit_csys')
-    with data.filename('DVM-Parameter_v2.10.0-HIT.csv') as filename:
-        parlist = load_csv(filename, 'utf-8')
+    with resource_stream('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv') as f:
+        parlist = load_csv(f, 'utf-8')
     def elem_param_dict(el_name, parlist):
         ret = dicti((p.name, p) for p in parlist)
         # NOTE: the following is an ugly hack to correct for missing suffixes
