@@ -67,7 +67,7 @@ class DllLoader(api.PluginLoader):
 
 
 def load_dvm_parameters():
-    with resource_stream('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv') as f:
+    with resource_stream('hit_csys', 'DVM-Parameter.csv') as f:
         parlist = load_csv(f, 'utf-8')
     return dicti(
         (el_name, dicti((p.name, p) for p in params))
