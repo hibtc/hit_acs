@@ -203,19 +203,30 @@ class HitOnlineControl(api.OnlinePlugin):
         self._dvm.SetFloatValue(param, value)
 
     def get_beam(self):
-        units       = unit.units
-        vacc        = self._dvm.GetSelectedVAcc()
-        particle    = ('C', 'p', 'He')[vacc // 5]
-        charge      = (  6,   1,    2)[vacc // 5]      # hebt, TODO: He?
-        nucl_num    = ( 12,   1,    3)[vacc // 5]      # hebt, TODO: He?
-        e_kin_per_u = self._dvm.GetMEFIValue()[0][0] * units.MeV / units.u
+        units  = unit.units
+        e_para = ENERGY_PARAM.get(self._segment.seq_name, 'E_HEBT')
+        z_num  = self._dvm.GetFloatValue('Z_POSTSTRIP')
+        mass   = self._dvm.GetFloatValue('A_POSTSTRIP') * units.u
+        charge = self._dvm.GetFloatValue('Q_POSTSTRIP') * units.e
+        e_kin  = (self._dvm.GetFloatValue(e_para) or 1)  * units.MeV / units.u
         return {
-            'particle': particle,
-            'charge':   charge   *  units.e,
-            'mass':     nucl_num * units.u,
-            'energy':   nucl_num * units.u * (1*units.c**2 + e_kin_per_u),
+            'particle': PERIODIC_TABLE[round(z_num)],
+            'charge':   charge,
+            'mass':     mass,
+            'energy':   mass * (e_kin + 1*units.c**2)
         }
 
+ENERGY_PARAM = {
+    'lebt': 'E_SOURCE',
+    'mebt': 'E_MEBT',
+}
+
+PERIODIC_TABLE = {
+    1: 'p',
+    2: 'He',
+    6: 'C',
+    8: 'O',
+}
 
 # NOTE: order is important, so keep 'dax' before 'ax', etc:
 PREFIXES = {
