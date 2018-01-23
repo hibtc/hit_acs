@@ -170,10 +170,14 @@ class HitOnlineControl(api.OnlinePlugin):
             suffixes = [el_name]
         el_pars = self._params.get(el_name, {})
         el_expr = getattr(elem[attr], '_expression', '').lower()
-        prefixes = [el_expr.split('_')[0]] if el_expr else []
-        prefixes += PREFIXES.get((el_type, attr), [])
-        for prefix, suffix in itertools.product(prefixes, suffixes):
-            param = el_pars.get(prefix + '_' + suffix)
+        prefixes = PREFIXES.get((el_type, attr), [])
+        # Prefer the parameter name defined by the expression; otherwise use
+        # the element name plus known prefixes, such as 'ax_', 'ay_':
+        par_names = [el_expr] + [
+            prefix + '_' + suffix
+            for prefix, suffix in itertools.product(prefixes, suffixes)
+        ]
+        for param in map(el_pars.get, par_names):
             if param:
                 return Knob(self, elem, attr, param)
         if  (el_name.startswith('gant') and
@@ -189,7 +193,6 @@ class HitOnlineControl(api.OnlinePlugin):
                 ui_conv=1,
             )
             return MEFI_Param(self, elem, 'gantry', param, 3)
-
 
     def read_param(self, param):
         """Read parameter. Return numeric value. No units!"""
@@ -217,7 +220,7 @@ class HitOnlineControl(api.OnlinePlugin):
 # NOTE: order is important, so keep 'dax' before 'ax', etc:
 PREFIXES = {
     ('sbend',   'angle'):  ['ax'],
-    ('quadrupole', 'k1'):  ['kl'],
+    ('quadrupole', 'k1'):  ['kl_efg', 'kl'],
     ('hkicker',  'kick'):  ['dax', 'ax'],
     ('vkicker',  'kick'):  ['day', 'ay'],
     ('solenoid',   'ks'):  ['ks'],
