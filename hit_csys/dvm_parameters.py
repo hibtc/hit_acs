@@ -8,11 +8,9 @@ from __future__ import absolute_import
 from collections import namedtuple
 
 import json
-import yaml
 
-from pydicti import dicti
 from madqt.core import unit
-from .util import csv_unicode_reader, yaml_load_unicode
+from .util import csv_unicode_reader
 
 
 DVM_Parameter = namedtuple('DVM_Parameter', [
@@ -23,32 +21,7 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
     'unit',
     'ui_unit',
     'ui_conv',
-    'example',
 ])
-
-
-#----------------------------------------
-# YAML serialization utilities
-#----------------------------------------
-
-def _serialize(field, value):
-    if field in ('unit', 'ui_unit'):
-        return unicode(value)
-    return value
-
-def _deserialize(field, value):
-    if field in ('unit', 'ui_unit'):
-        return unit.from_config(value)
-    return value
-
-def yaml_serialize_DVM_Parameter(param):
-    return tuple(_serialize(f, param[i])
-                 for i, f in enumerate(DVM_Parameter._fields))
-
-def yaml_deserialize_DVM_Parameter(param):
-    return DVM_Parameter(*tuple(
-        _deserialize(f, param[i])
-        for i, f in enumerate(DVM_Parameter._fields)))
 
 
 #----------------------------------------
@@ -80,132 +53,90 @@ def CsvUnit(s):
     return unit.from_config(s)
 
 
+def load_csv(lines, encoding='utf-8', delimiter=';'):
+    """
+    Parse DVM parameters from CSV file exported from XLS documentation
+    spreadsheet (e.g. DVM-Parameter_v2.10.0-10-HIT.xls)
+    """
+    return load_csv_data(csv_unicode_reader(
+        lines, encoding=encoding, delimiter=delimiter))
 
-class DVM_ParameterList(object):
 
-    def __init__(self, data):
-        self._data = data
+def load_csv_data(rows):
+    return _parse_csv_data(rows)
 
-    @classmethod
-    def from_csv(cls, filename, encoding='utf-8', delimiter=';'):
-        """
-        Parse DVM parameters from CSV file exported from XLS documentation
-        spreadsheet (e.g. DVM-Parameter_v2.10.0-10-HIT.xls)
-        """
-        csv_data = csv_unicode_reader(filename,
-                                      encoding=encoding,
-                                      delimiter=delimiter)
-        return cls.from_csv_data(csv_data)
 
-    @classmethod
-    def from_csv_data(cls, rows):
-        return cls(dicti(cls._parse_csv_data(rows)))
+def _parse_csv_data(rows):
+    parse_row = lambda row: DVM_Parameter(**{
+        n: _csv_column_types[n](row[i].strip())
+        for n, i in _csv_column_index.items()
+    })
+    cluster_name = ''
+    cluster_items = []
+    for row in rows:
+        item = parse_row(row)
+        # detect cluster header lines:
+        link = row[0]
+        if link and not link.isdigit() and not item.name:
+            # yield previous element/context
+            if cluster_items:
+                yield (cluster_name, cluster_items)
+            cluster_name = link
+            cluster_items = []
+        elif item.name:
+            cluster_items.append(item)
+    if cluster_items:
+        yield (cluster_name, cluster_items)
 
-    @classmethod
-    def _parse_csv_data(cls, rows):
-        types = cls._csv_column_types
-        index = cls._csv_column_index
-        parse_row = lambda row: DVM_Parameter(**{
-            n: types[n](row[i].strip())
-            for n, i in index.items()
-        })
-        cluster_name = ''
-        cluster_items = []
-        for row in rows:
-            item = parse_row(row)
-            # detect cluster header lines:
-            link = row[0]
-            if link and not link.isdigit() and not item.name:
-                # yield previous element/context
-                if cluster_items:
-                    yield (cluster_name, cluster_items)
-                cluster_name = link
-                cluster_items = []
-            elif item.name:
-                cluster_items.append(item)
-        if cluster_items:
-            yield (cluster_name, cluster_items)
+# all columns in csv file:
+_csv_column_names = [
+    '',                 # Nr. für Link
+    'name',             # Code Param (GSI-Nomenklatur)
+    '',                 # Code Gerät (GSI- NomenkLatur) entspr. DCU!
+    '',                 # Code Gruppe (=Kalkulationsgruppe); möglichst GSI-NomenkLatur
+    'ui_name',          # GUI Beschriftung Parameter (ohne Einheit)
+    'ui_hint',          # GUI Beschriftung Hint
+    '',                 # Position ExpertGrids
+    '',                 # DVM liest Parameter
+    '',                 # DVM ändert Parameter
+    '',                 # DVM Datensatz spezifisch
+    '',                 # Rein temporär
+    '',                 # MEFI-Abhängigkeit
+    '',                 # Input Param wird Output Param bei MEFI
+    '',                 # In Gui Init änderbar
+    '',                 # Daten-typ
+    'ui_prec',          # Präzision (Anz. Nachkomma im GUI)
+    'unit',             # Einheit Parameter
+    'ui_unit',          # Einheit Anzeige im GUI
+    'ui_conv',          # Umrechnungsfaktor Einheit--> Einheit GUI
+    '',                 # Beispielwert für Test in Einheit GUI
+    '',                 # Referenz auf DCU /MDE
+    '',                 # (nicht verwendet)
+    '',                 # Zugriffscode / editierbarkeit
+    '',                 # Versions-  Relevanz
+    '',                 # Detail Ansicht verfügbar (ja/nein)
+    '',                 # Link auf Maximalwert
+    '',                 # Link auf Minimalwert
+    '',                 # Code Min/Max- Rechen-vorschrift
+    '',                 # Master-gruppe
+    '',                 # Defaultwert Änderung pro Pfeiltasten-druck/Maus-radsegment in Einheit GUI
+    '',                 # Im laufenden Betrieb änderbar (ja/ nein)
+    '',                 # Link auf zugehörigen sekundären Wert
+]
 
-    # all columns in csv file:
-    _csv_column_names = [
-        '',                 # Nr. für Link
-        'name',             # Code Param (GSI-Nomenklatur)
-        '',                 # Code Gerät (GSI- NomenkLatur) entspr. DCU!
-        '',                 # Code Gruppe (=Kalkulationsgruppe); möglichst GSI-NomenkLatur
-        'ui_name',          # GUI Beschriftung Parameter (ohne Einheit)
-        'ui_hint',          # GUI Beschriftung Hint
-        '',                 # Position ExpertGrids
-        '',                 # DVM liest Parameter
-        '',                 # DVM ändert Parameter
-        '',                 # DVM Datensatz spezifisch
-        '',                 # Rein temporär
-        '',                 # MEFI-Abhängigkeit
-        '',                 # Input Param wird Output Param bei MEFI
-        '',                 # In Gui Init änderbar
-        '',                 # Daten-typ
-        'ui_prec',          # Präzision (Anz. Nachkomma im GUI)
-        'unit',             # Einheit Parameter
-        'ui_unit',          # Einheit Anzeige im GUI
-        'ui_conv',          # Umrechnungsfaktor Einheit--> Einheit GUI
-        'example',          # Beispielwert für Test in Einheit GUI
-        '',                 # Referenz auf DCU /MDE
-        '',                 # (nicht verwendet)
-        '',                 # Zugriffscode / editierbarkeit
-        '',                 # Versions-  Relevanz
-        '',                 # Detail Ansicht verfügbar (ja/nein)
-        '',                 # Link auf Maximalwert
-        '',                 # Link auf Minimalwert
-        '',                 # Code Min/Max- Rechen-vorschrift
-        '',                 # Master-gruppe
-        '',                 # Defaultwert Änderung pro Pfeiltasten-druck/Maus-radsegment in Einheit GUI
-        '',                 # Im laufenden Betrieb änderbar (ja/ nein)
-        '',                 # Link auf zugehörigen sekundären Wert
-    ]
+_csv_column_types = {
+    'name': CsvStr,
+    'ui_name': CsvStr,
+    'ui_hint': CsvStr,
+    'ui_prec': CsvInt,
+    'unit': CsvUnit,
+    'ui_unit': CsvUnit,
+    'ui_conv': CsvFloat,
+}
 
-    _csv_column_types = {
-        'name': CsvStr,
-        'ui_name': CsvStr,
-        'ui_hint': CsvStr,
-        'ui_prec': CsvInt,
-        'unit': CsvUnit,
-        'ui_unit': CsvUnit,
-        'ui_conv': CsvFloat,
-        'example': CsvFloat,
-    }
-
-    # inverse map of _csv_columns[i] (used columns)
-    _csv_column_index = {
-        name: index
-        for index, name in enumerate(_csv_column_names)
-        if name
-    }
-
-    @classmethod
-    def from_yaml(cls, filename, encoding='utf-8'):
-        try:
-            Loader = yaml.CSafeLoader
-        except AttributeError:
-            Loader = yaml.SafeLoader
-        with open(filename, 'rb') as f:
-            data = yaml_load_unicode(f, Loader)
-        return cls.from_yaml_data(data)
-
-    @classmethod
-    def from_yaml_data(cls, raw_data):
-        data = dicti({
-            name: [yaml_deserialize_DVM_Parameter(item) for item in items]
-            for name, items in raw_data.items()
-        })
-        return cls(data)
-
-    def to_yaml(self, filename=None, encoding='utf-8'):
-        data = {
-            name: [yaml_serialize_DVM_Parameter(item) for item in items]
-            for name, items in self._data.items()
-        }
-        text = yaml.safe_dump(data, encoding=encoding, allow_unicode=True)
-        if filename:
-            with open(filename, 'wb') as f:
-                f.write(text)
-        else:
-            return text
+# inverse map of _csv_columns[i] (used columns)
+_csv_column_index = {
+    name: index
+    for index, name in enumerate(_csv_column_names)
+    if name
+}

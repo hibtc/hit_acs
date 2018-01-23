@@ -51,17 +51,6 @@ def _api_meth(func):
     return wrapper
 
 
-def _get_param_example_value(param):
-    """Get example value in from a DVM_Parameter (in DVM database unit)."""
-    if param.example is None:
-        # FIXME: how to handle example=None?
-        return None
-    if param.ui_conv:
-        return param.example / param.ui_conv
-    else:
-        return param.example
-
-
 class BeamOptikDllProxy(object):
 
     """A fake implementation for a ctypes proxy of the BeamOptikDLL."""

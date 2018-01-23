@@ -1,0 +1,3 @@
+include README.rst
+include hit_csys/*.csv
+include hit_csys/*.yml

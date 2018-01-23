@@ -6,6 +6,11 @@ Madgui online control plugin.
 from __future__ import absolute_import
 
 import logging
+import itertools
+try:
+    from importlib.resources import resource_stream     # faster import
+except ImportError:
+    from pkg_resources import resource_stream
 
 from pydicti import dicti
 
@@ -19,7 +24,7 @@ from madqt.qt import QtGui
 from madqt.core import unit
 from madqt.online import api
 
-from .dvm_parameters import DVM_ParameterList, DVM_Parameter
+from .dvm_parameters import load_csv, DVM_Parameter
 
 
 class StubLoader(api.PluginLoader):
@@ -39,8 +44,8 @@ class StubLoader(api.PluginLoader):
         proxy = BeamOptikDllProxy(frame, logger)
         dvm = BeamOptikDLL(proxy)
         dvm.on_workspace_changed = proxy.on_workspace_changed
-        mgr = DVM_Param_Manager(dvm, frame)
-        return HitOnlineControl(dvm, mgr)
+        params = load_dvm_parameters()
+        return HitOnlineControl(dvm, params, frame)
 
 
 class DllLoader(api.PluginLoader):
@@ -57,75 +62,16 @@ class DllLoader(api.PluginLoader):
     def load(cls, frame):
         """Connect to online database."""
         dvm = BeamOptikDLL.load_library()
-        mgr = DVM_Param_Manager(dvm, frame)
-        return HitOnlineControl(dvm, mgr)
+        params = load_dvm_parameters()
+        return HitOnlineControl(dvm, params, frame)
 
 
-class DVM_Param_Manager(Object):
-
-    on_loaded_dvm_params = Signal(object)
-
-    def __init__(self, dvm, frame=None):
-        super(DVM_Param_Manager, self).__init__()
-        self._dvm = dvm
-        self._frame = frame
-        self._cache = {}
-
-    def get(self, segment):
-        if segment not in self._cache:
-            self._cache[segment] = dvm_params = self._load(segment)
-            self.on_loaded_dvm_params.emit(dvm_params)
-        return self._cache[segment]
-
-    def _elem_param_dict(self, el_name, parlist):
-        ret = dicti((p.name, p) for p in parlist)
-        # NOTE: the following is an ugly hack to correct for missing suffixes
-        # for some of the DB parameters. It would better to find a solution
-        # that is not hard-coded.
-        el_name = el_name.lower()
-        if el_name.endswith('h') or el_name.endswith('v'):
-            update = {}
-            el_prefix = el_name[:-1]
-            el_suffix = el_name[-1]
-            for k, v in ret.items():
-                if k.lower().endswith('_' + el_prefix):
-                    update[k+el_suffix] = v
-            ret.update(update)
-        return ret
-
-    def _load(self, segment):
-        try:
-            repo = segment.workspace.repo
-            data = repo.yaml('dvm.yml')
-            parlist = DVM_ParameterList.from_yaml_data(data)
-        # TODO: catch IOError or similar
-        except AttributeError:
-            parlist = self._load_from_disc()
-        return dicti(
-            (k, self._elem_param_dict(k, l))
-            for k, l in parlist._data.items())
-
-    def _load_from_disc(self):
-        """Show a FileDialog to import a new DVM parameter list."""
-        from madqt.util.filedialog import getOpenFileName
-        filters = [
-            ("CSV files", "*.csv"),
-        ]
-        message = "Load DVM-Parameter list. The CSV file must be ';' separated and 'utf-8' encoded."
-        # TODO: let user choose the correct delimiter/encoding settings
-        filename = getOpenFileName(
-            self._frame, message, self._frame.folder, filters)
-        if filename:
-            return self.load_param_file(filename)
-
-    def load_param_file(self, filename):
-        try:
-            return DVM_ParameterList.from_csv(filename, 'utf-8')
-        except UnicodeDecodeError:
-            QtGui.QMessageBox.critical(
-                self._frame,
-                'I can only load UTF-8 encoded files!',
-                'UnicodeDecodeError')
+def load_dvm_parameters():
+    with resource_stream('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv') as f:
+        parlist = load_csv(f, 'utf-8')
+    return dicti(
+        (el_name, dicti((p.name, p) for p in params))
+        for el_name, params in parlist)
 
 
 def _get_sd_value(dvm, el_name, param_name):
@@ -137,9 +83,10 @@ def _get_sd_value(dvm, el_name, param_name):
 
 class HitOnlineControl(api.OnlinePlugin):
 
-    def __init__(self, dvm, mgr):
+    def __init__(self, dvm, params, frame):
         self._dvm = dvm
-        self._mgr = mgr
+        self._params = params
+        self._frame = frame
         self._config = load_yaml_resource('hit_csys', 'config.yml')
         self._utool = unit.UnitConverter.from_config_dict(
             self._config['units'])
@@ -149,13 +96,13 @@ class HitOnlineControl(api.OnlinePlugin):
     def connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
-        self._mgr._frame.workspace_changed.connect(self.on_workspace_changed)
+        self._frame.workspace_changed.connect(self.on_workspace_changed)
         self.on_workspace_changed()
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
-        self._mgr._frame.workspace_changed.disconnect(self.on_workspace_changed)
+        self._frame.workspace_changed.disconnect(self.on_workspace_changed)
 
     def on_workspace_changed(self):
         if hasattr(self._dvm, 'on_workspace_changed'):
@@ -163,7 +110,7 @@ class HitOnlineControl(api.OnlinePlugin):
 
     @property
     def _segment(self):
-        return self._mgr._frame.workspace.segment
+        return self._frame.workspace.segment
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
@@ -175,7 +122,7 @@ class HitOnlineControl(api.OnlinePlugin):
             return knob.info
         el_name = knob.split('_', 1)[1]
         try:
-            return self._mgr.get(self._segment)[el_name][knob]
+            return self._params[el_name][knob]
         except KeyError:
             return None
 
@@ -215,12 +162,22 @@ class HitOnlineControl(api.OnlinePlugin):
             body, suffix = el_name.rsplit('_', 1)
             if suffix == 'corr' and attr == 'kick':
                 el_name = body
-        el_pars = self._mgr.get(self._segment).get(el_name, {})
+        # Sometimes the parameter name does not include the element H/V
+        # suffix, e.g.: R1MS1H -> ax_R1MS1, R1MS1V -> ay_R1MS1
+        if el_name[-1:] in 'hv':
+            suffixes = [el_name, el_name[:-1]]
+        else:
+            suffixes = [el_name]
+        el_pars = self._params.get(el_name, {})
         el_expr = getattr(elem[attr], '_expression', '').lower()
-        prefixes = [el_expr.split('_')[0]] if el_expr else []
-        prefixes += PREFIXES.get((el_type, attr), [])
-        for prefix in prefixes:
-            param = el_pars.get(prefix + '_' + el_name)
+        prefixes = PREFIXES.get((el_type, attr), [])
+        # Prefer the parameter name defined by the expression; otherwise use
+        # the element name plus known prefixes, such as 'ax_', 'ay_':
+        par_names = [el_expr] + [
+            prefix + '_' + suffix
+            for prefix, suffix in itertools.product(prefixes, suffixes)
+        ]
+        for param in map(el_pars.get, par_names):
             if param:
                 return Knob(self, elem, attr, param)
         if  (el_name.startswith('gant') and
@@ -234,10 +191,8 @@ class HitOnlineControl(api.OnlinePlugin):
                 unit='°',
                 ui_unit='°',
                 ui_conv=1,
-                example=0,
             )
             return MEFI_Param(self, elem, 'gantry', param, 3)
-
 
     def read_param(self, param):
         """Read parameter. Return numeric value. No units!"""
@@ -265,7 +220,7 @@ class HitOnlineControl(api.OnlinePlugin):
 # NOTE: order is important, so keep 'dax' before 'ax', etc:
 PREFIXES = {
     ('sbend',   'angle'):  ['ax'],
-    ('quadrupole', 'k1'):  ['kl'],
+    ('quadrupole', 'k1'):  ['kl_efg', 'kl'],
     ('hkicker',  'kick'):  ['dax', 'ax'],
     ('vkicker',  'kick'):  ['day', 'ay'],
     ('solenoid',   'ks'):  ['ks'],
