@@ -18,6 +18,7 @@ from madqt.core.base import Object, Signal
 from madqt.qt import QtGui
 from madqt.core import unit
 from madqt.online import api
+from madqt.resource.package import PackageResource
 
 from .dvm_parameters import DVM_ParameterList, DVM_Parameter
 
@@ -94,29 +95,12 @@ class DVM_Param_Manager(Object):
         return ret
 
     def _load(self, segment):
-        try:
-            repo = segment.workspace.repo
-            data = repo.yaml('dvm.yml')
-            parlist = DVM_ParameterList.from_yaml_data(data)
-        # TODO: catch IOError or similar
-        except AttributeError:
-            parlist = self._load_from_disc()
+        data = PackageResource('hit_csys')
+        with data.filename('DVM-Parameter_v2.10.0-HIT.csv') as filename:
+            parlist = self.load_param_file(filename)
         return dicti(
             (k, self._elem_param_dict(k, l))
             for k, l in parlist._data.items())
-
-    def _load_from_disc(self):
-        """Show a FileDialog to import a new DVM parameter list."""
-        from madqt.util.filedialog import getOpenFileName
-        filters = [
-            ("CSV files", "*.csv"),
-        ]
-        message = "Load DVM-Parameter list. The CSV file must be ';' separated and 'utf-8' encoded."
-        # TODO: let user choose the correct delimiter/encoding settings
-        filename = getOpenFileName(
-            self._frame, message, self._frame.folder, filters)
-        if filename:
-            return self.load_param_file(filename)
 
     def load_param_file(self, filename):
         try:
