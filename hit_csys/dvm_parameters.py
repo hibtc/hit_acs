@@ -8,11 +8,10 @@ from __future__ import absolute_import
 from collections import namedtuple
 
 import json
-import yaml
 
 from pydicti import dicti
 from madqt.core import unit
-from .util import csv_unicode_reader, yaml_load_unicode
+from .util import csv_unicode_reader
 
 
 DVM_Parameter = namedtuple('DVM_Parameter', [
@@ -25,30 +24,6 @@ DVM_Parameter = namedtuple('DVM_Parameter', [
     'ui_conv',
     'example',
 ])
-
-
-#----------------------------------------
-# YAML serialization utilities
-#----------------------------------------
-
-def _serialize(field, value):
-    if field in ('unit', 'ui_unit'):
-        return unicode(value)
-    return value
-
-def _deserialize(field, value):
-    if field in ('unit', 'ui_unit'):
-        return unit.from_config(value)
-    return value
-
-def yaml_serialize_DVM_Parameter(param):
-    return tuple(_serialize(f, param[i])
-                 for i, f in enumerate(DVM_Parameter._fields))
-
-def yaml_deserialize_DVM_Parameter(param):
-    return DVM_Parameter(*tuple(
-        _deserialize(f, param[i])
-        for i, f in enumerate(DVM_Parameter._fields)))
 
 
 #----------------------------------------
@@ -179,33 +154,3 @@ class DVM_ParameterList(object):
         for index, name in enumerate(_csv_column_names)
         if name
     }
-
-    @classmethod
-    def from_yaml(cls, filename, encoding='utf-8'):
-        try:
-            Loader = yaml.CSafeLoader
-        except AttributeError:
-            Loader = yaml.SafeLoader
-        with open(filename, 'rb') as f:
-            data = yaml_load_unicode(f, Loader)
-        return cls.from_yaml_data(data)
-
-    @classmethod
-    def from_yaml_data(cls, raw_data):
-        data = dicti({
-            name: [yaml_deserialize_DVM_Parameter(item) for item in items]
-            for name, items in raw_data.items()
-        })
-        return cls(data)
-
-    def to_yaml(self, filename=None, encoding='utf-8'):
-        data = {
-            name: [yaml_serialize_DVM_Parameter(item) for item in items]
-            for name, items in self._data.items()
-        }
-        text = yaml.safe_dump(data, encoding=encoding, allow_unicode=True)
-        if filename:
-            with open(filename, 'wb') as f:
-                f.write(text)
-        else:
-            return text
