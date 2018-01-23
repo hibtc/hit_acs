@@ -11,27 +11,3 @@ units:
   angle:    rad
   dax:      rad
   ax:       rad
-
-vacc:
-  # Vaccs can only be used with the following ions:
-  ion:
-    C:  [ 1,  2,  3,  4,  5]
-    O:  [ 1,  2,  3,  4,  5]
-    p:  [ 6,  7,  8,  9, 10]
-    He: [11, 12, 13, 14, 15]
-
-  # The following sequences can only be used with these accs:
-  seq:
-    hht1: [1,  6, 11]
-    hht2: [2,  7, 12]
-    hht3: [3,  8, 13]
-    hht4: [4,  9, 14]
-    hht5: [5, 10, 15]
-
-# ion by atomic number:
-ions:
-  1:  p
-  3:  He
-  4:  He
-  12: C
-  16: O
