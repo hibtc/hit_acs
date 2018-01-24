@@ -188,8 +188,8 @@ class HitOnlineControl(api.OnlinePlugin):
                 ui_name='gantry_angle',
                 ui_hint='',
                 ui_prec=3,
-                unit='°',
-                ui_unit='°',
+                unit=1*unit.units.degree,
+                ui_unit=1*unit.units.degree,
                 ui_conv=1,
             )
             return MEFI_Param(self, elem, 'gantry', param, 3)
@@ -257,7 +257,9 @@ class MEFI_Param(Knob):
         self.idx = idx
 
     def read(self):
-        return self.plug._dvm.GetMEFIValue()[0][self.idx]
+        return unit.add_unit(
+            self.plug._dvm.GetMEFIValue()[0][self.idx],
+            self.unit)
 
     def write(self, value):
         pass
