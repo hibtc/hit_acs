@@ -43,7 +43,7 @@ class StubLoader(api.PluginLoader):
         logger = logging.getLogger('hit_csys.stub')
         proxy = BeamOptikDllProxy(frame, logger)
         dvm = BeamOptikDLL(proxy)
-        dvm.on_workspace_changed = proxy.on_workspace_changed
+        dvm.on_model_changed = proxy.on_model_changed
         params = load_dvm_parameters()
         return HitOnlineControl(dvm, params, frame)
 
@@ -96,21 +96,21 @@ class HitOnlineControl(api.OnlinePlugin):
     def connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
-        self._frame.workspace_changed.connect(self.on_workspace_changed)
-        self.on_workspace_changed()
+        self._frame.model_changed.connect(self.on_model_changed)
+        self.on_model_changed()
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
-        self._frame.workspace_changed.disconnect(self.on_workspace_changed)
+        self._frame.model_changed.disconnect(self.on_model_changed)
 
-    def on_workspace_changed(self):
-        if hasattr(self._dvm, 'on_workspace_changed'):
-            self._dvm.on_workspace_changed()
+    def on_model_changed(self):
+        if hasattr(self._dvm, 'on_model_changed'):
+            self._dvm.on_model_changed()
 
     @property
-    def _segment(self):
-        return self._frame.workspace.segment
+    def _model(self):
+        return self._frame.model
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
@@ -204,7 +204,7 @@ class HitOnlineControl(api.OnlinePlugin):
 
     def get_beam(self):
         units  = unit.units
-        e_para = ENERGY_PARAM.get(self._segment.seq_name, 'E_HEBT')
+        e_para = ENERGY_PARAM.get(self._model.seq_name, 'E_HEBT')
         z_num  = self._dvm.GetFloatValue('Z_POSTSTRIP')
         mass   = self._dvm.GetFloatValue('A_POSTSTRIP') * units.u
         charge = self._dvm.GetFloatValue('Q_POSTSTRIP') * units.e

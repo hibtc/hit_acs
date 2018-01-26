@@ -67,8 +67,8 @@ class BeamOptikDllProxy(object):
         self.frame = frame
         self.jitter = True
 
-    def on_workspace_changed(self):
-        self.segment = self.frame.workspace.segment
+    def on_model_changed(self):
+        self.model = self.frame.model
         self.params.clear()
         self.frame.control.write_all()
         if self.jitter:
@@ -161,8 +161,8 @@ class BeamOptikDllProxy(object):
         assert self.instances[iid.value]
 
         par_name, el_name = name.lower().split('_', 1)
-        index = self.segment.elements.index(el_name)
-        index = self.segment.indices[index].stop
+        index = self.model.elements.index(el_name)
+        index = self.model.indices[index].stop
 
         cols = {
             'widthx': 'envx',
@@ -171,8 +171,8 @@ class BeamOptikDllProxy(object):
             'posy': 'posy',
         }
         col = cols[par_name]
-        twiss = self.segment.get_twiss_column(col)
-        v = self.segment.utool.strip_unit(col, twiss[index])
+        twiss = self.model.get_twiss_column(col)
+        v = self.model.utool.strip_unit(col, twiss[index])
 
         if self.jitter:
             if par_name in ('widthx', 'widthy'):
