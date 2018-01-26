@@ -1,6 +1,12 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.5.0
+-----
+Date: 26.01.2018
+
+- update to madqt 0.0.6: unification of workspace/segment -> model
+
 0.4.0
 -----
 Date: 24.01.2018

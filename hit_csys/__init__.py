@@ -10,13 +10,13 @@ __title__ = 'hit_csys'
 __summary__ = 'Online control for the HIT accelerator facility.'
 __uri__ = 'https://bitbucket.org/coldfix/hit-online-control'
 
-__version__ = '0.4.0'
+__version__ = '0.5.0'
 
 __author__ = 'Thomas Gläßle'
 __email__ = 't_glaessle@gmx.de'
 
 __license__ = None
-__copyright__ = '(C) 2013 - 2015 HIT Betriebs GmbH'
+__copyright__ = '(C) 2013 - 2018 HIT Betriebs GmbH'
 
 # Trove classifiers: https://pypi.python.org/pypi?:action=list_classifiers
 __classifiers__ = [
