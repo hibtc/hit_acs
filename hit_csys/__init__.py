@@ -31,7 +31,7 @@ __classifiers__ = [
 ]
 
 entry_points = """
-[madqt.online.PluginLoader]
+[madgui.online.PluginLoader]
 stub = hit_csys.plugin:StubLoader
 dll = hit_csys.plugin:DllLoader
 """

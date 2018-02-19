@@ -19,10 +19,10 @@ from .util import load_yaml_resource
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .stub import BeamOptikDllProxy
 
-from madqt.core.base import Object, Signal
-from madqt.qt import QtGui
-from madqt.core import unit
-from madqt.online import api
+from madgui.core.base import Object, Signal
+from madgui.qt import QtGui
+from madgui.core import unit
+from madgui.online import api
 
 from .dvm_parameters import load_csv, DVM_Parameter
 

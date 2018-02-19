@@ -5,7 +5,7 @@ Tools to work with DVM paramater list.
 
 from collections import namedtuple
 
-from madqt.core import unit
+from madgui.core import unit
 from hit_csys.util import csv_unicode_reader
 
 

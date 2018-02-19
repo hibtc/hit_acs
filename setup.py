@@ -37,7 +37,7 @@ def main():
             'gui_scripts': [
                 'hit_csys = hit_csys.gui_wx:main'
             ],
-            'madqt.online.PluginLoader': [
+            'madgui.online.PluginLoader': [
                 'stub = hit_csys.plugin:StubLoader',
                 'dll = hit_csys.plugin:DllLoader',
             ]

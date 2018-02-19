@@ -5,9 +5,9 @@ Description
 ~~~~~~~~~~~
 
 Contains a wrapper for the ``BeamOptikDLL.dll`` control library of the HIT
-accelerator facility for use with madqt_.
+accelerator facility for use with madgui_.
 
-.. _madqt: https://github.com/coldfix/madqt
+.. _madgui: https://github.com/coldfix/madgui
 
 Dependencies
 ~~~~~~~~~~~~
