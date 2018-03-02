@@ -232,6 +232,7 @@ PERIODIC_TABLE = {
 PREFIXES = {
     ('sbend',   'angle'):  ['ax'],
     ('quadrupole', 'k1'):  ['kl_efg', 'kl'],
+    ('quadrupole', 'k1s'):  ['kl_efg', 'kl'],
     ('hkicker',  'kick'):  ['dax', 'ax'],
     ('vkicker',  'kick'):  ['day', 'ay'],
     ('solenoid',   'ks'):  ['ks'],
@@ -239,7 +240,7 @@ PREFIXES = {
     ('multipole', 'ksl[0]'):  ['day', 'ay'],
 }
 
-CSYS_ATTR = { 'k1': 'kl' }
+CSYS_ATTR = { 'k1': 'kl', 'k1s': 'kl' }
 
 
 class Knob(api.Knob):
