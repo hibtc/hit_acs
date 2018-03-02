@@ -1,6 +1,13 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.6.0
+-----
+Date: 02.03.2018
+
+- fix knob access for skew quadrupoles
+- compatible with madgui 1.7.1, hit_models 0.7.0
+
 0.5.0
 -----
 Date: 26.01.2018
