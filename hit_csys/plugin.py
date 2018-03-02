@@ -78,7 +78,7 @@ def _get_sd_value(dvm, el_name, param_name):
     """Return a single SD value (with unit)."""
     sd_name = param_name + '_' + el_name
     plain_value = dvm.GetFloatValueSD(sd_name.upper())
-    return plain_value * unit.units.mm
+    return plain_value / 1000       # mm to m
 
 
 class HitOnlineControl(api.OnlinePlugin):
@@ -88,8 +88,6 @@ class HitOnlineControl(api.OnlinePlugin):
         self._params = params
         self._frame = frame
         self._config = load_yaml_resource('hit_csys', 'config.yml')
-        self._utool = unit.UnitConverter.from_config_dict(
-            self._config['units'])
 
     # OnlinePlugin API
 
@@ -148,7 +146,7 @@ class HitOnlineControl(api.OnlinePlugin):
             # unchecked/grayed out, instead of removed completely
             # The magic number -9999.0 signals corrupt values.
             # FIXME: Sometimes width=0 is returned. ~ Meaning?
-            if src.startswith('width') and val.magnitude <= 0:
+            if src.startswith('width') and val <= 0:
                 return {}
             values[dst] = val
         return values
@@ -195,11 +193,11 @@ class HitOnlineControl(api.OnlinePlugin):
             return MEFI_Param(self, elem, 'gantry', param, 3)
 
     def read_param(self, param):
-        """Read parameter. Return numeric value. No units!"""
+        """Read parameter. Return numeric value."""
         return self._dvm.GetFloatValue(param)
 
     def write_param(self, param, value):
-        """Update parameter into control system. No units!"""
+        """Update parameter into control system."""
         self._dvm.SetFloatValue(param, value)
 
     def get_beam(self):
@@ -208,12 +206,12 @@ class HitOnlineControl(api.OnlinePlugin):
         z_num  = self._dvm.GetFloatValue('Z_POSTSTRIP')
         mass   = self._dvm.GetFloatValue('A_POSTSTRIP') * units.u
         charge = self._dvm.GetFloatValue('Q_POSTSTRIP') * units.e
-        e_kin  = (self._dvm.GetFloatValue(e_para) or 1)  * units.MeV / units.u
+        e_kin  = (self._dvm.GetFloatValue(e_para) or 1) * units.MeV / units.u
         return {
             'particle': PERIODIC_TABLE[round(z_num)],
-            'charge':   charge,
-            'mass':     mass,
-            'energy':   mass * (e_kin + 1*units.c**2)
+            'charge':   unit.from_ui('charge', charge),
+            'mass':     unit.from_ui('mass',   mass),
+            'energy':   unit.from_ui('energy', mass * (e_kin + 1*units.c**2)),
         }
 
 ENERGY_PARAM = {
@@ -258,9 +256,10 @@ class MEFI_Param(Knob):
         self.idx = idx
 
     def read(self):
-        return unit.add_unit(
-            self.plug._dvm.GetMEFIValue()[0][self.idx],
-            self.unit)
+        return unit.madx_units.strip_unit(
+            self.attr, unit.add_unit(
+                self.plug._dvm.GetMEFIValue()[0][self.idx],
+                self.info.unit))
 
     def write(self, value):
         pass

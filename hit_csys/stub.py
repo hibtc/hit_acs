@@ -7,7 +7,7 @@ offline testing of the basic functionality.
 import functools
 import ctypes
 
-from pydicti import dicti
+from madgui.core.unit import madx_units
 
 from . import beamoptikdll
 
@@ -172,7 +172,7 @@ class BeamOptikDllProxy(object):
         }
         col = cols[par_name]
         twiss = self.model.get_twiss_column(col)
-        v = self.model.utool.strip_unit(col, twiss[index])
+        v = madx_units.strip_unit(col, twiss[index])
 
         if self.jitter:
             if par_name in ('widthx', 'widthy'):
