@@ -1,6 +1,13 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.7.0
+-----
+Date: 25.03.2018
+
+- update madgui plugin to new unit handling in madgui
+- compatible with madgui 1.8.0, hit_models 0.8.0
+
 0.6.0
 -----
 Date: 02.03.2018
