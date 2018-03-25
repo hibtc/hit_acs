@@ -1,5 +1,5 @@
 hit-online-control
-----------
+------------------
 
 Description
 ~~~~~~~~~~~
