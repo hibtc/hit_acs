@@ -156,10 +156,6 @@ class HitOnlineControl(api.OnlinePlugin):
         attr = attr.lower()
         el_name = elem['name'].lower()
         el_type = elem['type'].lower()
-        if '_' in el_name:
-            body, suffix = el_name.rsplit('_', 1)
-            if suffix == 'corr' and attr == 'kick':
-                el_name = body
         # Sometimes the parameter name does not include the element H/V
         # suffix, e.g.: R1MS1H -> ax_R1MS1, R1MS1V -> ay_R1MS1
         if el_name[-1:] in 'hv':
