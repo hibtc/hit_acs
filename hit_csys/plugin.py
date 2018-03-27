@@ -70,8 +70,9 @@ def load_dvm_parameters():
     with resource_stream('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv') as f:
         parlist = load_csv(f, 'utf-8')
     return dicti(
-        (el_name, dicti((p.name, p) for p in params))
-        for el_name, params in parlist)
+        (p.name, p)
+        for el_name, params in parlist
+        for p in params)
 
 
 def _get_sd_value(dvm, el_name, param_name):
@@ -118,9 +119,8 @@ class HitOnlineControl(api.OnlinePlugin):
         """Get parameter info for backend key."""
         if isinstance(knob, Knob):
             return knob.info
-        el_name = knob.split('_', 1)[1]
         try:
-            return self._params[el_name][knob]
+            return self._params[knob]
         except KeyError:
             return None
 
@@ -151,32 +151,14 @@ class HitOnlineControl(api.OnlinePlugin):
             values[dst] = val
         return values
 
-    def get_knob(self, elem, attr):
+    def get_knob(self, knob_mad):
         """Return a :class:`Knob` belonging to the given attribute."""
-        attr = attr.lower()
-        el_name = elem['name'].lower()
-        el_type = elem['type'].lower()
-        # Sometimes the parameter name does not include the element H/V
-        # suffix, e.g.: R1MS1H -> ax_R1MS1, R1MS1V -> ay_R1MS1
-        if el_name[-1:] in 'hv':
-            suffixes = [el_name, el_name[:-1]]
-        else:
-            suffixes = [el_name]
-        el_pars = self._params.get(el_name, {})
-        el_expr = getattr(elem[attr], '_expression', '').lower()
-        prefixes = PREFIXES.get((el_type, attr), [])
-        # Prefer the parameter name defined by the expression; otherwise use
-        # the element name plus known prefixes, such as 'ax_', 'ay_':
-        par_names = [el_expr] + [
-            prefix + '_' + suffix
-            for prefix, suffix in itertools.product(prefixes, suffixes)
-        ]
-        for param in map(el_pars.get, par_names):
-            if param:
-                return Knob(self, elem, attr, param)
-        if  (el_name.startswith('gant') and
-             el_type == 'srotation' and
-             attr =='angle'):
+        param = self._params.get(knob_mad.param, {})
+        if param:
+            return Knob(self, knob_mad.elem, knob_mad.attr, param)
+        if  (knob_mad.elem.Name.startswith('gant') and
+             knob_mad.elem.Type == 'srotation' and
+             knob_mad.attr =='angle'):
             param = DVM_Parameter(
                 name='gantry_angle',
                 ui_name='gantry_angle',
@@ -186,7 +168,7 @@ class HitOnlineControl(api.OnlinePlugin):
                 ui_unit=1*unit.units.degree,
                 ui_conv=1,
             )
-            return MEFI_Param(self, elem, 'gantry', param, 3)
+            return MEFI_Param(self, knob_mad.elem, 'gantry', param, 3)
 
     def read_param(self, param):
         """Read parameter. Return numeric value."""
@@ -222,17 +204,6 @@ PERIODIC_TABLE = {
     8: 'O',
 }
 
-# NOTE: order is important, so keep 'dax' before 'ax', etc:
-PREFIXES = {
-    ('sbend',   'angle'):  ['ax'],
-    ('quadrupole', 'k1'):  ['kl_efg', 'kl'],
-    ('quadrupole', 'k1s'):  ['kl_efg', 'kl'],
-    ('hkicker',  'kick'):  ['dax', 'ax'],
-    ('vkicker',  'kick'):  ['day', 'ay'],
-    ('solenoid',   'ks'):  ['ks'],
-    ('multipole', 'knl[0]'):  ['dax', 'ax'],
-    ('multipole', 'ksl[0]'):  ['day', 'ay'],
-}
 
 CSYS_ATTR = { 'k1': 'kl', 'k1s': 'kl' }
 
