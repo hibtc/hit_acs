@@ -9,7 +9,7 @@ import ctypes
 
 from madgui.core.unit import madx_units
 
-from . import beamoptikdll
+from .beamoptikdll import DVMStatus, _decode
 
 import random
 
@@ -23,7 +23,7 @@ __all__ = [
 
 def _unbox(param):
     """Unbox a call parameter created by ctypes.byref."""
-    return param.value if isinstance(param, c_str) else param._obj
+    return _decode(param.value) if isinstance(param, c_str) else param._obj
 
 
 def _api_meth(func):
@@ -101,7 +101,7 @@ class BeamOptikDllProxy(object):
         """Get DVM ready status."""
         assert self.instances[iid.value]
         # The test lib has no advanced status right now.
-        status.value = beamoptikdll.DVMStatus.Ready
+        status.value = DVMStatus.Ready
 
     @_api_meth
     def SelectVAcc(self, iid, vaccnum):
