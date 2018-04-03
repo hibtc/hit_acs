@@ -146,7 +146,7 @@ class HitOnlineControl(api.OnlinePlugin):
             # unchecked/grayed out, instead of removed completely
             # The magic number -9999.0 signals corrupt values.
             # FIXME: Sometimes width=0 is returned. ~ Meaning?
-            if src.startswith('width') and val <= 0:
+            if val == -9999 or src.startswith('width') and val <= 0:
                 return {}
             values[dst] = val
         values['posx'] = -values['posx']
