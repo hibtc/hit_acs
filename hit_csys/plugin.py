@@ -149,6 +149,7 @@ class HitOnlineControl(api.OnlinePlugin):
             if src.startswith('width') and val <= 0:
                 return {}
             values[dst] = val
+        values['posx'] = -values['posx']
         return values
 
     def get_knob(self, knob_mad):
