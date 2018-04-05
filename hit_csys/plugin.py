@@ -96,12 +96,14 @@ class HitOnlineControl(api.OnlinePlugin):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
         self._frame.model_changed.connect(self.on_model_changed)
+        self._frame.context['dll'] = self._dvm
         self.on_model_changed()
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
         self._frame.model_changed.disconnect(self.on_model_changed)
+        self._frame.context.pop('dll', None)
 
     def on_model_changed(self):
         if hasattr(self._dvm, 'on_model_changed'):
