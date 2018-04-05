@@ -29,9 +29,3 @@ __classifiers__ = [
     'Topic :: Scientific/Engineering :: Medical Science Apps.',
     'Topic :: Scientific/Engineering :: Physics',
 ]
-
-entry_points = """
-[madgui.online.PluginLoader]
-stub = hit_csys.plugin:StubLoader
-dll = hit_csys.plugin:DllLoader
-"""

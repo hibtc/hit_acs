@@ -37,10 +37,6 @@ def main():
             'gui_scripts': [
                 'hit_csys = hit_csys.gui_wx:main'
             ],
-            'madgui.online.PluginLoader': [
-                'stub = hit_csys.plugin:StubLoader',
-                'dll = hit_csys.plugin:DllLoader',
-            ]
         },
         install_requires=[
             'pydicti>=0.0.4',
