@@ -173,6 +173,8 @@ class BeamOptikDllProxy(object):
         col = cols[par_name]
         twiss = self.model.get_twiss_column(col)
         v = madx_units.strip_unit(col, twiss[index])
+        if par_name == 'posx':
+            v = -v
 
         if self.jitter:
             if par_name in ('widthx', 'widthy'):
