@@ -7,6 +7,8 @@ from __future__ import absolute_import
 
 import logging
 import itertools
+import os
+from glob import glob
 try:
     from importlib.resources import resource_stream     # faster import
 except ImportError:
@@ -25,6 +27,7 @@ from madgui.core import unit
 from madgui.online import api
 
 from .dvm_parameters import load_csv, DVM_Parameter
+from .offsets import read_offsets_file
 
 
 class StubLoader(api.PluginLoader):
@@ -89,6 +92,8 @@ class HitOnlineControl(api.OnlinePlugin):
         self._params = params
         self._frame = frame
         self._config = load_yaml_resource('hit_csys', 'config.yml')
+        self._offsets = {}
+        self.find_offsets()
 
     # OnlinePlugin API
 
@@ -151,6 +156,9 @@ class HitOnlineControl(api.OnlinePlugin):
             if val == -9999 or src.startswith('width') and val <= 0:
                 return {}
             values[dst] = val
+        xoffs, yoffs = self._offsets.get(name, (0, 0))
+        values['posx'] += xoffs
+        values['posy'] += yoffs
         values['posx'] = -values['posx']
         return values
 
@@ -194,6 +202,20 @@ class HitOnlineControl(api.OnlinePlugin):
             'mass':     unit.from_ui('mass',   mass),
             'energy':   unit.from_ui('energy', mass * (e_kin + 1*units.c**2)),
         }
+
+    def find_offsets(self):
+        """Find and read .xml files MWPC offsets in `runtime` folder."""
+        runtime = self._frame.config.get('runtime_path', '.')
+        for path in glob(os.path.join(runtime, '*', '*.xml')):
+            try:
+                self.read_offsets(path)
+            except Exception:
+                pass
+
+    def read_offsets(self, path):
+        """Read .xml file with MWPC offsets."""
+        self._offsets.update(read_offsets_file(path))
+
 
 ENERGY_PARAM = {
     'lebt': 'E_SOURCE',
