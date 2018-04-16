@@ -175,7 +175,8 @@ class BeamOptikDllProxy(object):
         v = madx_units.strip_unit(col, twiss[index])
         if par_name == 'posx':
             v = -v
-
+        v -= self.frame.control._plugin._offsets.get(el_name, (0, 0))[
+            par_name == 'posy']
         if self.jitter:
             if par_name in ('widthx', 'widthy'):
                 v *= random.uniform(0.95, 1.1)
