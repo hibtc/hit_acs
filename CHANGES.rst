@@ -1,6 +1,23 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.8.0
+-----
+Date: 16.04.2018
+
+- adapt to changes in madgui ``1.9.0`` API
+- simplify ``get_knob`` logic significantly
+- remove support for inserted kickers into SBENDs (now modelled as ``K0 !=
+  ANGLE/L``)
+- fix an error in stub with 32bit
+- flip monitor X position to convert from HIT to MAD-X coordinate system (HIT
+  uses a left-handed system in HEBT!)
+- discard ``-9999`` records from monitors
+- remove setuptools entrypoint for madgui, must now be loaded manually using
+  the ``onload`` handler
+- expose ``dll`` variable to user shell
+- read and add offsets to MWPC measurements
+
 0.7.0
 -----
 Date: 25.03.2018
