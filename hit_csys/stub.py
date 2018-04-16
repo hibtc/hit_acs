@@ -43,7 +43,7 @@ def _api_meth(func):
         done.value = 0
         unboxed_args = tuple(map(_unbox, args))
         if self.logger:
-            self.logger.info('{}{}'.format(func.__name__, unboxed_args))
+            self.logger.debug('{}{}'.format(func.__name__, unboxed_args))
         ret = func(self, *unboxed_args)
         if ret is not None:
             done.value = ret
