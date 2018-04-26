@@ -6,18 +6,8 @@ Tools to work with DVM paramater list.
 from collections import namedtuple
 
 from madgui.core import unit
+from madgui.online.api import ParamInfo
 from hit_csys.util import csv_unicode_reader
-
-
-DVM_Parameter = namedtuple('DVM_Parameter', [
-    'name',
-    'ui_name',
-    'ui_hint',
-    'ui_prec',
-    'unit',
-    'ui_unit',
-    'ui_conv',
-])
 
 
 #----------------------------------------
@@ -59,7 +49,7 @@ def load_csv_data(rows):
 
 
 def _parse_csv_data(rows):
-    parse_row = lambda row: DVM_Parameter(**{
+    parse_row = lambda row: ParamInfo(**{
         n: _csv_column_types[n](row[i].strip())
         for n, i in _csv_column_index.items()
     })

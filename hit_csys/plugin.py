@@ -26,7 +26,7 @@ from madgui.qt import QtGui
 from madgui.core import unit
 from madgui.online import api
 
-from .dvm_parameters import load_csv, DVM_Parameter
+from .dvm_parameters import load_csv
 from .offsets import read_offsets_file
 
 
@@ -90,6 +90,16 @@ class HitOnlineControl(api.OnlinePlugin):
     def __init__(self, dvm, params, frame):
         self._dvm = dvm
         self._params = params
+        self._params.update({
+            'gantry_angle': api.ParamInfo(
+                name='gantry_angle',
+                ui_name='gantry_angle',
+                ui_hint='',
+                ui_prec=3,
+                unit=1*unit.units.degree,
+                ui_unit=1*unit.units.degree,
+                ui_conv=1),
+        })
         self._frame = frame
         self._config = load_yaml_resource('hit_csys', 'config.yml')
         self._offsets = {}
@@ -124,12 +134,7 @@ class HitOnlineControl(api.OnlinePlugin):
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
-        if isinstance(knob, Knob):
-            return knob.info
-        try:
-            return self._params[knob]
-        except KeyError:
-            return None
+        return self._params.get(knob.lower())
 
     def read_monitor(self, name):
         """
@@ -162,27 +167,10 @@ class HitOnlineControl(api.OnlinePlugin):
         values['posx'] = -values['posx']
         return values
 
-    def get_knob(self, knob_mad):
-        """Return a :class:`Knob` belonging to the given attribute."""
-        param = self._params.get(knob_mad.param, {})
-        if param:
-            return Knob(self, knob_mad.elem, knob_mad.attr, param)
-        if  (knob_mad.elem.Name.startswith('gant') and
-             knob_mad.elem.Type == 'srotation' and
-             knob_mad.attr =='angle'):
-            param = DVM_Parameter(
-                name='gantry_angle',
-                ui_name='gantry_angle',
-                ui_hint='',
-                ui_prec=3,
-                unit=1*unit.units.degree,
-                ui_unit=1*unit.units.degree,
-                ui_conv=1,
-            )
-            return MEFI_Param(self, knob_mad.elem, 'gantry', param, 3)
-
     def read_param(self, param):
         """Read parameter. Return numeric value."""
+        if param == 'gantry_angle':
+            return self._dvm.GetMEFIValue()[0][3]
         return self._dvm.GetFloatValue(param)
 
     def write_param(self, param, value):
@@ -228,32 +216,3 @@ PERIODIC_TABLE = {
     6: 'C',
     8: 'O',
 }
-
-
-CSYS_ATTR = { 'k1': 'kl', 'k1s': 'kl' }
-
-
-class Knob(api.Knob):
-
-    def __init__(self, plug, elem, attr, param):
-        super().__init__(plug, elem, CSYS_ATTR.get(attr, attr),
-                         param.name, param.unit)
-        self.info = param
-
-
-class MEFI_Param(Knob):
-
-    def __init__(self, plug, elem, attr, param, idx):
-        super().__init__(plug, elem, attr, param)
-        self.idx = idx
-
-    def read(self):
-        return unit.madx_units.strip_unit(
-            self.attr, unit.add_unit(
-                self.plug._dvm.GetMEFIValue()[0][self.idx],
-                self.info.unit))
-
-    def write(self, value):
-        pass
-        #raise NotImplementedError(
-        #    "Must change MEFI parameters via BeamOptikDLL GUI")
