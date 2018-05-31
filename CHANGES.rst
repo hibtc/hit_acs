@@ -1,6 +1,13 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.9.0
+-----
+Date: 31.05.2018
+
+- fully simplify knobs to being only var names, all conversions are now done
+  by using appropriate expressions in the model!!
+
 0.8.0
 -----
 Date: 16.04.2018
