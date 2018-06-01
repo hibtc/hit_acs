@@ -4,6 +4,7 @@ Stub class for BeamOptikDLL.dll ctypes proxy objects as used by
 offline testing of the basic functionality.
 """
 
+import logging
 import functools
 import ctypes
 
@@ -42,8 +43,7 @@ def _api_meth(func):
         args = args[:idone] + args[idone+1:]
         done.value = 0
         unboxed_args = tuple(map(_unbox, args))
-        if self.logger:
-            self.logger.debug('{}{}'.format(func.__name__, unboxed_args))
+        logging.debug('{}{}'.format(func.__name__, unboxed_args))
         ret = func(self, *unboxed_args)
         if ret is not None:
             done.value = ret
@@ -58,11 +58,10 @@ class BeamOptikDllProxy(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, frame, logger=None):
+    def __init__(self, frame):
         """Initialize new library instance with no interface instances."""
         self.params = {}
         self.instances = {}
-        self.logger = logger
         self.next_iid = 0
         self.frame = frame
         self.jitter = True

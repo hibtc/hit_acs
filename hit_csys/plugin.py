@@ -42,9 +42,7 @@ class StubLoader(api.PluginLoader):
 
     @classmethod
     def load(cls, frame):
-        # logger = frame.getLogger('hit_csys.stub')
-        logger = logging.getLogger('hit_csys.stub')
-        proxy = BeamOptikDllProxy(frame, logger)
+        proxy = BeamOptikDllProxy(frame)
         dvm = BeamOptikDLL(proxy)
         dvm.on_model_changed = proxy.on_model_changed
         params = load_dvm_parameters()

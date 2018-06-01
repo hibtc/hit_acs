@@ -215,7 +215,6 @@ class BeamOptikDLL(object):
         self._iid = None
         self._selected_vacc = None
         self._selected_efi = EFI(None, None, None, None)
-        self._logger = logging.getLogger(__name__)
 
     @property
     def iid(self):
@@ -283,7 +282,7 @@ class BeamOptikDLL(object):
         if vaccnum == self._selected_vacc:
             self._selected_efi = EFI(energy, focus, intensity, gantry_angle)
         else:
-            self._logger.warn('You must call SelectVAcc() before SelectMEFI()!')
+            logging.warn('You must call SelectVAcc() before SelectMEFI()!')
         return EFI(*[v.value for v in values])
 
     def GetSelectedVAcc(self):
@@ -396,7 +395,7 @@ class BeamOptikDLL(object):
             energy != sel_efi.energy or
             focus != sel_efi.focus or
             intensity != sel_efi.intensity):
-            self._logger.warn("You must call SelectEFI() before StartRampDataGeneration()!")
+            logging.warn("You must call SelectEFI() before StartRampDataGeneration()!")
         return order_num.value
 
     def GetRampDataValue(self, order_num, event_num, delay,
