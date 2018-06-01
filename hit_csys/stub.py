@@ -74,6 +74,15 @@ class BeamOptikDllProxy(object):
         if self.jitter:
             for k in self.params:
                 self.params[k] *= random.uniform(0.95, 1.1)
+        self.params.update(dict(
+            A_POSTSTRIP = 1.007281417537080e+00,
+            Q_POSTSTRIP = 1.000000000000000e+00,
+            Z_POSTSTRIP = 1.000000000000000e+00,
+            E_HEBT      = 2.034800000000000e+02,
+            # copying HEBT settings for testing:
+            E_SOURCE    = 2.034800000000000e+02,
+            E_MEBT      = 2.034800000000000e+02,
+        ))
 
     @_api_meth
     def DisableMessageBoxes(self):
