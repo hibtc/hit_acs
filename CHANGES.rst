@@ -1,6 +1,13 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.10.0
+------
+Date: 01.06.2018
+
+- add beam parameters for test stub
+- automatically read beam and strengths on connect
+
 0.9.0
 -----
 Date: 31.05.2018
