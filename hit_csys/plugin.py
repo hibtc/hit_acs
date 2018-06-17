@@ -121,10 +121,6 @@ class HitOnlineControl(api.OnlinePlugin):
     def on_model_changed(self):
         if hasattr(self._dvm, 'on_model_changed'):
             self._dvm.on_model_changed()
-        if self._model:
-            logging.info('Synchronizing model parameters with HIT online control.')
-            self._frame.control.read_beam()
-            self._frame.control.read_all()
 
     @property
     def _model(self):
