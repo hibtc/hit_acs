@@ -25,7 +25,6 @@ from qtconsole.inprocess import QtInProcessKernelManager
 from qtconsole.qt import QtCore, QtGui
 
 from .beamoptikdll import BeamOptikDLL
-from .stub import BeamOptikDllProxy
 
 
 def create(user_ns):

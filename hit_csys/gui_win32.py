@@ -7,7 +7,6 @@ GUI provided by BeamOptikDLL itself.
 from __future__ import absolute_import
 
 import logging
-import platform
 import win32gui
 
 from .beamoptikdll import BeamOptikDLL

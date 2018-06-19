@@ -5,8 +5,6 @@ Madgui online control plugin.
 
 from __future__ import absolute_import
 
-import logging
-import itertools
 import os
 from glob import glob
 try:
@@ -21,8 +19,6 @@ from .util import load_yaml_resource
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .stub import BeamOptikDllProxy
 
-from madgui.core.base import Object, Signal
-from madgui.qt import QtGui
 from madgui.core import unit
 from madgui.online import api
 
