@@ -21,7 +21,7 @@ if sys.version_info[0] < 3:
     def csv_unicode_reader(lines, encoding='utf-8', **kwargs):
         """Load unicode CSV file."""
         return [[r.decode(encoding) for r in row]
-                for row in csv.reader(stream, **kwargs)]
+                for row in csv.reader(lines, **kwargs)]
 
 else:
     def csv_unicode_reader(lines, encoding='utf-8', **kwargs):
