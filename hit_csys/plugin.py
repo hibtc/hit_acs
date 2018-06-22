@@ -14,8 +14,6 @@ except ImportError:
 
 from pydicti import dicti
 
-from .util import load_yaml_resource
-
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .stub import BeamOptikDllProxy
 
@@ -95,7 +93,6 @@ class HitOnlineControl(api.OnlinePlugin):
                 ui_conv=1),
         })
         self._frame = frame
-        self._config = load_yaml_resource('hit_csys', 'config.yml')
         self._offsets = {}
         self.find_offsets()
 

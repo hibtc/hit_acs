@@ -40,7 +40,6 @@ def main():
         },
         install_requires=[
             'pydicti>=0.0.4',
-            'PyYAML',
         ],
         include_package_data=True,  # install files matched by MANIFEST.in
     )
