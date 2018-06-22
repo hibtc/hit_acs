@@ -5,6 +5,7 @@ Madgui online control plugin.
 
 from __future__ import absolute_import
 
+from functools import partial
 try:
     from importlib_resources import open_binary as resource_stream
 except ImportError:
@@ -17,6 +18,7 @@ from .stub import BeamOptikDllProxy
 
 from madgui.core import unit
 from madgui.online import api
+from madgui.util.collections import Bool
 
 from .dvm_parameters import load_csv
 from .offsets import find_offsets
@@ -34,12 +36,15 @@ class StubLoader(api.PluginLoader):
 
     @classmethod
     def load(cls, frame):
-        proxy = BeamOptikDllProxy(frame.model, frame.control)
+        model = frame.model
+        proxy = BeamOptikDllProxy(model, frame.control)
         dvm = BeamOptikDLL(proxy)
-        dvm.on_model_changed = proxy.on_model_changed
         params = load_dvm_parameters()
         offsets = find_offsets(frame.config.get('runtime_path', '.'))
-        return HitOnlineControl(dvm, params, frame.model, frame, offsets)
+        plugin = HitOnlineControl(dvm, params, frame.model, offsets)
+        plugin.connected.changed.connect(partial(update_ns, frame, dvm))
+        plugin.connected.changed.connect(proxy.on_connected_changed)
+        return plugin
 
 
 class DllLoader(api.PluginLoader):
@@ -58,7 +63,16 @@ class DllLoader(api.PluginLoader):
         dvm = BeamOptikDLL.load_library()
         params = load_dvm_parameters()
         offsets = find_offsets(frame.config.get('runtime_path', '.'))
-        return HitOnlineControl(dvm, params, frame.model, frame, offsets)
+        plugin = HitOnlineControl(dvm, params, frame.model, offsets)
+        plugin.connected.changed.connect(partial(update_ns, frame, dvm))
+        return plugin
+
+
+def update_ns(frame, dll, connected):
+    if connected:
+        frame.context['dll'] = dll
+    else:
+        frame.context.pop('dll', None)
 
 
 def load_dvm_parameters():
@@ -79,7 +93,7 @@ def _get_sd_value(dvm, el_name, param_name):
 
 class HitOnlineControl(api.OnlinePlugin):
 
-    def __init__(self, dvm, params, model=None, frame=None, offsets=None):
+    def __init__(self, dvm, params, model=None, offsets=None):
         self._dvm = dvm
         self._params = params
         self._params.update({
@@ -93,31 +107,20 @@ class HitOnlineControl(api.OnlinePlugin):
                 ui_conv=1),
         })
         self._model = model
-        self._frame = frame
         self._offsets = {} if offsets is None else offsets
+        self.connected = Bool(False)
 
     # OnlinePlugin API
 
     def connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
-        if self._model:
-            self._model.changed.connect(self.on_model_changed)
-        if self._frame:
-            self._frame.context['dll'] = self._dvm
-        self.on_model_changed()
+        self.connected.set(True)
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
-        if self._model:
-            self._model.changed.disconnect(self.on_model_changed)
-        if self._frame:
-            self._frame.context.pop('dll', None)
-
-    def on_model_changed(self):
-        if hasattr(self._dvm, 'on_model_changed'):
-            self._dvm.on_model_changed()
+        self.connected.set(False)
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""

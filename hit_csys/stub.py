@@ -65,7 +65,14 @@ class BeamOptikDllProxy(object):
         self.control = control
         self.jitter = True
 
-    def on_model_changed(self):
+    def on_connected_changed(self, connected):
+        if connected:
+            self.model.changed.connect(self.on_model_changed)
+            self.on_model_changed(self.model())
+        else:
+            self.model.changed.disconnect(self.on_model_changed)
+
+    def on_model_changed(self, model):
         self.params.clear()
         self.control.write_all()
         if self.jitter:
