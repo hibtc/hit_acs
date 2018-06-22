@@ -8,7 +8,7 @@ from __future__ import absolute_import
 import os
 from glob import glob
 try:
-    from importlib.resources import resource_stream     # faster import
+    from importlib_resources import open_binary as resource_stream
 except ImportError:
     from pkg_resources import resource_stream
 

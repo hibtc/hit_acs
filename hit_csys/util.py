@@ -5,7 +5,10 @@ Utilities for unicode IO.
 import csv
 import sys
 
-from pkg_resources import resource_string
+try:
+    from importlib.resources import read_binary as resource_string
+except ImportError:
+    from pkg_resources import resource_string
 
 import yaml
 
