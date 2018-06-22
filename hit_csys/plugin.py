@@ -39,6 +39,10 @@ class StubLoader(api.PluginLoader):
         offsets = find_offsets(frame.config.get('runtime_path', '.'))
         model = frame.model
         proxy = BeamOptikDllProxy(model, offsets)
+        if frame.config.get('str_file'):
+            proxy.load_float_values(frame.config.str_file)
+        if frame.config.get('sd_file'):
+            proxy.load_sd_values(frame.config.sd_file)
         dvm = BeamOptikDLL(proxy)
         params = load_dvm_parameters()
         plugin = HitOnlineControl(dvm, params, frame.model, offsets)

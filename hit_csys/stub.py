@@ -64,6 +64,35 @@ class BeamOptikDllProxy(object):
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.jitter = True
+        self.use_model = True
+        self.sd_values = None
+
+    def load_float_values(self, filename):
+        from madgui.core.model import read_strengths
+        self.set_float_values(read_strengths(filename))
+
+    def load_sd_values(self, filename):
+        import yaml
+        with open(filename) as f:
+            data = yaml.safe_load(f)
+        cols = {
+            'envx': 'widthx',
+            'envy': 'widthy',
+            'x': 'posx',
+            'y': 'posy',
+        }
+        self.set_sd_values({
+            cols[param]+'_'+elem: value
+            for elem, values in data['monitor'].items()
+            for param, value in values.items()
+        })
+
+    def set_float_values(self, data):
+        self.params = dicti(data)
+        self.use_model = False
+
+    def set_sd_values(self, data):
+        self.sd_values = dicti(data)
 
     def on_connected_changed(self, connected):
         if connected:
@@ -73,6 +102,8 @@ class BeamOptikDllProxy(object):
             self.model.changed.disconnect(self.on_model_changed)
 
     def on_model_changed(self, model):
+        if not self.use_model:
+            return
         self.params.clear()
         if model is None:
             return
@@ -165,6 +196,13 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def GetFloatValueSD(self, iid, name, value, options):
         """Get beam diagnostic value."""
+        if self.sd_values is not None:
+            try:
+                value.value = self.sd_values[name] * 1000
+            except KeyError:
+                value.value = -9999.0
+            return
+
         par_name, el_name = name.lower().split('_', 1)
         index = self.model().elements.index(el_name)
         index = self.model().indices[index].stop
