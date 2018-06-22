@@ -2,6 +2,8 @@
 Utilities for reading .xml file with MWPC offsets.
 """
 
+import os
+from glob import glob
 from xml.etree import ElementTree
 
 from madgui.core.unit import from_ui, from_config
@@ -42,6 +44,17 @@ def read_offsets_file(path):
     prefix = PREFIX_ROOM[room]
     return {prefix+SUFFIX_MWPC[mwpc]: xy
             for mwpc, xy in offsets.items()}
+
+
+def find_offsets(path):
+    """Find and read .xml files MWPC offsets in `path`."""
+    offsets = {}
+    for path in glob(os.path.join(path, '*', '*.xml')):
+        try:
+            offsets.update(read_offsets_file(path))
+        except Exception:
+            pass
+    return offsets
 
 
 def print_offsets(path):

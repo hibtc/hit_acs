@@ -5,8 +5,6 @@ Madgui online control plugin.
 
 from __future__ import absolute_import
 
-import os
-from glob import glob
 try:
     from importlib_resources import open_binary as resource_stream
 except ImportError:
@@ -21,7 +19,7 @@ from madgui.core import unit
 from madgui.online import api
 
 from .dvm_parameters import load_csv
-from .offsets import read_offsets_file
+from .offsets import find_offsets
 
 
 class StubLoader(api.PluginLoader):
@@ -40,7 +38,8 @@ class StubLoader(api.PluginLoader):
         dvm = BeamOptikDLL(proxy)
         dvm.on_model_changed = proxy.on_model_changed
         params = load_dvm_parameters()
-        return HitOnlineControl(dvm, params, frame.model, frame)
+        offsets = find_offsets(frame.config.get('runtime_path', '.'))
+        return HitOnlineControl(dvm, params, frame.model, frame, offsets)
 
 
 class DllLoader(api.PluginLoader):
@@ -58,7 +57,8 @@ class DllLoader(api.PluginLoader):
         """Connect to online database."""
         dvm = BeamOptikDLL.load_library()
         params = load_dvm_parameters()
-        return HitOnlineControl(dvm, params, frame.model, frame)
+        offsets = find_offsets(frame.config.get('runtime_path', '.'))
+        return HitOnlineControl(dvm, params, frame.model, frame, offsets)
 
 
 def load_dvm_parameters():
@@ -79,7 +79,7 @@ def _get_sd_value(dvm, el_name, param_name):
 
 class HitOnlineControl(api.OnlinePlugin):
 
-    def __init__(self, dvm, params, model=None, frame=None):
+    def __init__(self, dvm, params, model=None, frame=None, offsets=None):
         self._dvm = dvm
         self._params = params
         self._params.update({
@@ -94,8 +94,7 @@ class HitOnlineControl(api.OnlinePlugin):
         })
         self._model = model
         self._frame = frame
-        self._offsets = {}
-        self.find_offsets()
+        self._offsets = {} if offsets is None else offsets
 
     # OnlinePlugin API
 
@@ -182,21 +181,6 @@ class HitOnlineControl(api.OnlinePlugin):
             'mass':     unit.from_ui('mass',   mass),
             'energy':   unit.from_ui('energy', mass * (e_kin + 1*units.c**2)),
         }
-
-    def find_offsets(self):
-        """Find and read .xml files MWPC offsets in `runtime` folder."""
-        if not self._frame:
-            return
-        runtime = self._frame.config.get('runtime_path', '.')
-        for path in glob(os.path.join(runtime, '*', '*.xml')):
-            try:
-                self.read_offsets(path)
-            except Exception:
-                pass
-
-    def read_offsets(self, path):
-        """Read .xml file with MWPC offsets."""
-        self._offsets.update(read_offsets_file(path))
 
 
 ENERGY_PARAM = {
