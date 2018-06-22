@@ -36,11 +36,11 @@ class StubLoader(api.PluginLoader):
 
     @classmethod
     def load(cls, frame):
-        proxy = BeamOptikDllProxy(frame)
+        proxy = BeamOptikDllProxy(frame.model, frame.control)
         dvm = BeamOptikDLL(proxy)
         dvm.on_model_changed = proxy.on_model_changed
         params = load_dvm_parameters()
-        return HitOnlineControl(dvm, params, frame)
+        return HitOnlineControl(dvm, params, frame.model, frame)
 
 
 class DllLoader(api.PluginLoader):
@@ -58,7 +58,7 @@ class DllLoader(api.PluginLoader):
         """Connect to online database."""
         dvm = BeamOptikDLL.load_library()
         params = load_dvm_parameters()
-        return HitOnlineControl(dvm, params, frame)
+        return HitOnlineControl(dvm, params, frame.model, frame)
 
 
 def load_dvm_parameters():
@@ -79,7 +79,7 @@ def _get_sd_value(dvm, el_name, param_name):
 
 class HitOnlineControl(api.OnlinePlugin):
 
-    def __init__(self, dvm, params, frame=None):
+    def __init__(self, dvm, params, model=None, frame=None):
         self._dvm = dvm
         self._params = params
         self._params.update({
@@ -92,6 +92,7 @@ class HitOnlineControl(api.OnlinePlugin):
                 ui_unit=1*unit.units.degree,
                 ui_conv=1),
         })
+        self._model = model
         self._frame = frame
         self._offsets = {}
         self.find_offsets()
@@ -101,25 +102,23 @@ class HitOnlineControl(api.OnlinePlugin):
     def connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
+        if self._model:
+            self._model.changed.connect(self.on_model_changed)
         if self._frame:
-            self._frame.model_changed.connect(self.on_model_changed)
             self._frame.context['dll'] = self._dvm
         self.on_model_changed()
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
+        if self._model:
+            self._model.changed.disconnect(self.on_model_changed)
         if self._frame:
-            self._frame.model_changed.disconnect(self.on_model_changed)
             self._frame.context.pop('dll', None)
 
     def on_model_changed(self):
         if hasattr(self._dvm, 'on_model_changed'):
             self._dvm.on_model_changed()
-
-    @property
-    def _model(self):
-        return self._frame and self._frame.model
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
@@ -172,7 +171,7 @@ class HitOnlineControl(api.OnlinePlugin):
 
     def get_beam(self):
         units  = unit.units
-        e_para = ENERGY_PARAM.get(self._model.seq_name, 'E_HEBT')
+        e_para = ENERGY_PARAM.get(self._model().seq_name, 'E_HEBT')
         z_num  = self._dvm.GetFloatValue('Z_POSTSTRIP')
         mass   = self._dvm.GetFloatValue('A_POSTSTRIP') * units.u
         charge = self._dvm.GetFloatValue('Q_POSTSTRIP') * units.e
