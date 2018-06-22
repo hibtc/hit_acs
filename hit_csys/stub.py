@@ -7,10 +7,12 @@ offline testing of the basic functionality.
 import logging
 import functools
 import ctypes
+import random
+
+from pydicti import dicti
 
 from .beamoptikdll import DVMStatus, _decode
 
-import random
 
 c_str = ctypes.c_char_p, ctypes.c_wchar_p
 
@@ -56,13 +58,12 @@ class BeamOptikDllProxy(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, model=None, control=None, offsets=None):
+    def __init__(self, model=None, offsets=None):
         """Initialize new library instance with no interface instances."""
-        self.params = {}
+        self.params = dicti()
         self.instances = {}
         self.next_iid = 0
         self.model = model
-        self.control = control
         self.offsets = {} if offsets is None else offsets
         self.jitter = True
 
@@ -75,7 +76,9 @@ class BeamOptikDllProxy(object):
 
     def on_model_changed(self, model):
         self.params.clear()
-        self.control.write_all()
+        if model is None:
+            return
+        self.params.update(model.globals)
         if self.jitter:
             for k in self.params:
                 self.params[k] *= random.uniform(0.95, 1.1)
