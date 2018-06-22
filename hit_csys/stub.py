@@ -61,11 +61,12 @@ class BeamOptikDllProxy(object):
     def __init__(self, model=None, offsets=None):
         """Initialize new library instance with no interface instances."""
         self.params = dicti()
+        self.sd_values = dicti()
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.jitter = True
-        self.use_model = True
-        self.sd_values = None
+        self.auto_params = True
+        self.auto_sd = True
 
     def load_float_values(self, filename):
         from madgui.core.model import read_strengths
@@ -89,10 +90,11 @@ class BeamOptikDllProxy(object):
 
     def set_float_values(self, data):
         self.params = dicti(data)
-        self.use_model = False
+        self.auto_params = False
 
     def set_sd_values(self, data):
         self.sd_values = dicti(data)
+        self.auto_sd = False
 
     def on_connected_changed(self, connected):
         if connected:
@@ -102,11 +104,14 @@ class BeamOptikDllProxy(object):
             self.model.changed.disconnect(self.on_model_changed)
 
     def on_model_changed(self, model):
-        if not self.use_model:
-            return
+        if model:
+            if self.auto_params:
+                self.update_params(model)
+            if self.auto_sd:
+                self.update_sd_values(model)
+
+    def update_params(self, model):
         self.params.clear()
-        if model is None:
-            return
         self.params.update(model.globals)
         if self.jitter:
             for k in self.params:
@@ -186,7 +191,9 @@ class BeamOptikDllProxy(object):
 
     @_api_meth
     def ExecuteChanges(self, iid, options):
-        """Do nothing: our "database" is currently non-transactional."""
+        """Compute new measurements based on current model."""
+        if self.auto_sd:
+            self.update_sd_values(self.model())
 
     @_api_meth
     def SetNewValueCallback(self, iid, callback):
@@ -196,36 +203,33 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def GetFloatValueSD(self, iid, name, value, options):
         """Get beam diagnostic value."""
-        if self.sd_values is not None:
-            try:
-                value.value = self.sd_values[name] * 1000
-            except KeyError:
-                value.value = -9999.0
-            return
+        try:
+            value.value = self.sd_values[name] * 1000
+        except KeyError:
+            value.value = -9999.0
 
-        par_name, el_name = name.lower().split('_', 1)
-        index = self.model().elements.index(el_name)
-        index = self.model().indices[index].stop
-
-        cols = {
-            'widthx': 'envx',
-            'widthy': 'envy',
-            'posx': 'posx',
-            'posy': 'posy',
-        }
-        col = cols[par_name]
-        twiss = self.model().get_twiss_column(col)
-        v = twiss[index]
-        if par_name == 'posx':
-            v = -v
-        v -= self.offsets.get(el_name, (0, 0))[par_name == 'posy']
-        if self.jitter:
-            if par_name in ('widthx', 'widthy'):
-                v *= random.uniform(0.95, 1.1)
-            elif par_name in ('posx', 'posy'):
-                v += random.uniform(-0.0005, 0.0005)
-
-        value.value = v * 1000
+    def update_sd_values(self, model):
+        """Compute new measurements based on current model."""
+        model.twiss()
+        for elem in model.elements:
+            if elem.base_name.endswith('monitor'):
+                dx, dy = self.offsets.get(elem.name, (0, 0))
+                twiss = model.get_elem_twiss(elem.name)
+                values = {
+                    'widthx': twiss.envx,
+                    'widthy': twiss.envy,
+                    'posx': -twiss.x - dx,
+                    'posy': twiss.y - dy,
+                }
+                if self.jitter:
+                    values['widthx'] *= random.uniform(0.95, 1.1)
+                    values['widthy'] *= random.uniform(0.95, 1.1)
+                    values['posx'] += random.uniform(-0.0005, 0.0005)
+                    values['posy'] += random.uniform(-0.0005, 0.0005)
+                self.sd_values.update({
+                    key + '_' + elem.name: val
+                    for key, val in values.items()
+                })
 
     @_api_meth
     def GetLastFloatValueSD(self, iid,
