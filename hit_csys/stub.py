@@ -61,8 +61,6 @@ class BeamOptikDllProxy(object):
     def __init__(self, model=None, offsets=None):
         """Initialize new library instance with no interface instances."""
         self.params = dicti()
-        self.instances = {}
-        self.next_iid = 0
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.jitter = True
@@ -100,31 +98,26 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def GetInterfaceInstance(self, iid):
         """Create a new interface instance."""
-        iid.value = self.next_iid
-        self.instances[iid.value] = {
-            'VAcc': 1,
-            'EFIA': (1, 1, 1, 1),
-        }
-        self.next_iid += 1
+        iid.value = 1337
+        self.vacc = 1
+        self.EFIA = (1, 1, 1, 1)
 
     @_api_meth
     def FreeInterfaceInstance(self, iid):
         """Destroy a previously created interface instance."""
-        assert self.instances[iid.value]
-        self.instances[iid.value] = None
+        del self.vacc
+        del self.EFIA
 
     @_api_meth
     def GetDVMStatus(self, iid, status):
         """Get DVM ready status."""
-        assert self.instances[iid.value]
         # The test lib has no advanced status right now.
         status.value = DVMStatus.Ready
 
     @_api_meth
     def SelectVAcc(self, iid, vaccnum):
         """Set virtual accelerator number."""
-        assert self.instances[iid.value]
-        self.instances[iid.value]['VAcc'] = vaccnum.value
+        self.vacc = vaccnum.value
 
     @_api_meth
     def SelectMEFI(self, iid, vaccnum,
@@ -133,8 +126,8 @@ class BeamOptikDllProxy(object):
         """Set MEFI in current VAcc."""
         # The real DLL requires SelectVAcc to be called in advance, so we
         # enforce this constraint here as well:
-        assert self.instances[iid.value]['VAcc'] == vaccnum.value
-        self.instances[iid.value]['EFIA'] = (
+        assert self.vacc == vaccnum.value
+        self.EFIA = (
             energy.value,
             focus.value,
             intensity.value,
@@ -148,24 +141,21 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def GetSelectedVAcc(self, iid, vaccnum):
         """Get currently selected VAcc."""
-        vaccnum.value = self.instances[iid.value]['VAcc']
+        vaccnum.value = self.vacc
 
     @_api_meth
     def GetFloatValue(self, iid, name, value, options):
         """Get a float value from the "database"."""
-        assert self.instances[iid.value]
         value.value = float(self.params.get(name, 0))
 
     @_api_meth
     def SetFloatValue(self, iid, name, value, options):
         """Store a float value to the "database"."""
-        assert self.instances[iid.value]
         self.params[name] = value.value
 
     @_api_meth
     def ExecuteChanges(self, iid, options):
         """Do nothing: our "database" is currently non-transactional."""
-        assert self.instances[iid.value]
 
     @_api_meth
     def SetNewValueCallback(self, iid, callback):
@@ -175,8 +165,6 @@ class BeamOptikDllProxy(object):
     @_api_meth
     def GetFloatValueSD(self, iid, name, value, options):
         """Get beam diagnostic value."""
-        assert self.instances[iid.value]
-
         par_name, el_name = name.lower().split('_', 1)
         index = self.model().elements.index(el_name)
         index = self.model().indices[index].stop
@@ -232,7 +220,7 @@ class BeamOptikDllProxy(object):
                      energy_val, focus_val, intensity_val, gantry_angle_val,
                      energy_chn, focus_chn, intensity_chn, gantry_angle_chn):
         """Get current MEFI combination."""
-        e, f, i, a = self.instances[iid.value]['EFIA']
+        e, f, i, a = self.EFIA
         energy_chn.value = e
         focus_chn.value = f
         intensity_chn.value = i
