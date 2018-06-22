@@ -5,8 +5,7 @@ Madgui online control plugin.
 
 from __future__ import absolute_import
 
-import os
-from glob import glob
+from functools import partial
 try:
     from importlib_resources import open_binary as resource_stream
 except ImportError:
@@ -19,9 +18,10 @@ from .stub import BeamOptikDllProxy
 
 from madgui.core import unit
 from madgui.online import api
+from madgui.util.collections import Bool
 
 from .dvm_parameters import load_csv
-from .offsets import read_offsets_file
+from .offsets import find_offsets
 
 
 class StubLoader(api.PluginLoader):
@@ -36,11 +36,15 @@ class StubLoader(api.PluginLoader):
 
     @classmethod
     def load(cls, frame):
-        proxy = BeamOptikDllProxy(frame)
+        offsets = find_offsets(frame.config.get('runtime_path', '.'))
+        model = frame.model
+        proxy = BeamOptikDllProxy(model, offsets)
         dvm = BeamOptikDLL(proxy)
-        dvm.on_model_changed = proxy.on_model_changed
         params = load_dvm_parameters()
-        return HitOnlineControl(dvm, params, frame)
+        plugin = HitOnlineControl(dvm, params, frame.model, offsets)
+        plugin.connected.changed.connect(partial(update_ns, frame, dvm))
+        plugin.connected.changed.connect(proxy.on_connected_changed)
+        return plugin
 
 
 class DllLoader(api.PluginLoader):
@@ -58,7 +62,17 @@ class DllLoader(api.PluginLoader):
         """Connect to online database."""
         dvm = BeamOptikDLL.load_library()
         params = load_dvm_parameters()
-        return HitOnlineControl(dvm, params, frame)
+        offsets = find_offsets(frame.config.get('runtime_path', '.'))
+        plugin = HitOnlineControl(dvm, params, frame.model, offsets)
+        plugin.connected.changed.connect(partial(update_ns, frame, dvm))
+        return plugin
+
+
+def update_ns(frame, dll, connected):
+    if connected:
+        frame.context['dll'] = dll
+    else:
+        frame.context.pop('dll', None)
 
 
 def load_dvm_parameters():
@@ -79,7 +93,7 @@ def _get_sd_value(dvm, el_name, param_name):
 
 class HitOnlineControl(api.OnlinePlugin):
 
-    def __init__(self, dvm, params, frame):
+    def __init__(self, dvm, params, model=None, offsets=None):
         self._dvm = dvm
         self._params = params
         self._params.update({
@@ -92,32 +106,21 @@ class HitOnlineControl(api.OnlinePlugin):
                 ui_unit=1*unit.units.degree,
                 ui_conv=1),
         })
-        self._frame = frame
-        self._offsets = {}
-        self.find_offsets()
+        self._model = model
+        self._offsets = {} if offsets is None else offsets
+        self.connected = Bool(False)
 
     # OnlinePlugin API
 
     def connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
-        self._frame.model_changed.connect(self.on_model_changed)
-        self._frame.context['dll'] = self._dvm
-        self.on_model_changed()
+        self.connected.set(True)
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
-        self._frame.model_changed.disconnect(self.on_model_changed)
-        self._frame.context.pop('dll', None)
-
-    def on_model_changed(self):
-        if hasattr(self._dvm, 'on_model_changed'):
-            self._dvm.on_model_changed()
-
-    @property
-    def _model(self):
-        return self._frame.model
+        self.connected.set(False)
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
@@ -170,7 +173,7 @@ class HitOnlineControl(api.OnlinePlugin):
 
     def get_beam(self):
         units  = unit.units
-        e_para = ENERGY_PARAM.get(self._model.seq_name, 'E_HEBT')
+        e_para = ENERGY_PARAM.get(self._model().seq_name, 'E_HEBT')
         z_num  = self._dvm.GetFloatValue('Z_POSTSTRIP')
         mass   = self._dvm.GetFloatValue('A_POSTSTRIP') * units.u
         charge = self._dvm.GetFloatValue('Q_POSTSTRIP') * units.e
@@ -181,19 +184,6 @@ class HitOnlineControl(api.OnlinePlugin):
             'mass':     unit.from_ui('mass',   mass),
             'energy':   unit.from_ui('energy', mass * (e_kin + 1*units.c**2)),
         }
-
-    def find_offsets(self):
-        """Find and read .xml files MWPC offsets in `runtime` folder."""
-        runtime = self._frame.config.get('runtime_path', '.')
-        for path in glob(os.path.join(runtime, '*', '*.xml')):
-            try:
-                self.read_offsets(path)
-            except Exception:
-                pass
-
-    def read_offsets(self, path):
-        """Read .xml file with MWPC offsets."""
-        self._offsets.update(read_offsets_file(path))
 
 
 ENERGY_PARAM = {
