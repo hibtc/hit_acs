@@ -56,18 +56,20 @@ class BeamOptikDllProxy(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, frame):
+    def __init__(self, frame=None, control=None):
         """Initialize new library instance with no interface instances."""
         self.params = {}
         self.instances = {}
         self.next_iid = 0
         self.frame = frame
+        self.control = control
         self.jitter = True
 
     def on_model_changed(self):
-        self.model = self.frame.model
+        if self.frame:
+            self.model = self.frame.model
         self.params.clear()
-        self.frame.control.write_all()
+        self.control.write_all()
         if self.jitter:
             for k in self.params:
                 self.params[k] *= random.uniform(0.95, 1.1)
@@ -181,7 +183,7 @@ class BeamOptikDllProxy(object):
         v = twiss[index]
         if par_name == 'posx':
             v = -v
-        v -= self.frame.control._plugin._offsets.get(el_name, (0, 0))[
+        v -= self.control._plugin._offsets.get(el_name, (0, 0))[
             par_name == 'posy']
         if self.jitter:
             if par_name in ('widthx', 'widthy'):

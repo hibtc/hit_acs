@@ -79,7 +79,7 @@ def _get_sd_value(dvm, el_name, param_name):
 
 class HitOnlineControl(api.OnlinePlugin):
 
-    def __init__(self, dvm, params, frame):
+    def __init__(self, dvm, params, frame=None):
         self._dvm = dvm
         self._params = params
         self._params.update({
@@ -101,15 +101,17 @@ class HitOnlineControl(api.OnlinePlugin):
     def connect(self):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
-        self._frame.model_changed.connect(self.on_model_changed)
-        self._frame.context['dll'] = self._dvm
+        if self._frame:
+            self._frame.model_changed.connect(self.on_model_changed)
+            self._frame.context['dll'] = self._dvm
         self.on_model_changed()
 
     def disconnect(self):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
-        self._frame.model_changed.disconnect(self.on_model_changed)
-        self._frame.context.pop('dll', None)
+        if self._frame:
+            self._frame.model_changed.disconnect(self.on_model_changed)
+            self._frame.context.pop('dll', None)
 
     def on_model_changed(self):
         if hasattr(self._dvm, 'on_model_changed'):
@@ -117,7 +119,7 @@ class HitOnlineControl(api.OnlinePlugin):
 
     @property
     def _model(self):
-        return self._frame.model
+        return self._frame and self._frame.model
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
@@ -184,6 +186,8 @@ class HitOnlineControl(api.OnlinePlugin):
 
     def find_offsets(self):
         """Find and read .xml files MWPC offsets in `runtime` folder."""
+        if not self._frame:
+            return
         runtime = self._frame.config.get('runtime_path', '.')
         for path in glob(os.path.join(runtime, '*', '*.xml')):
             try:
