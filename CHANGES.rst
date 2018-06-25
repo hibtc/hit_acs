@@ -1,6 +1,28 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.11.0
+------
+Date: 25.06.2018
+
+- revert "Automatically read beam and strengths on connect", it was broken
+  because usually there will be no MEFI combination selected at this point
+- cleanup some unnecessary imports
+- fix NameError in ``csv_unicode_reader`` on py2
+- fix ``importlib_resources`` import and use within ``util`` as well
+- remove obsolete config file and YAML dependency with it
+- make the ``frame`` argument optional (useful for testing)
+- adapt to backward incompatible changes in ``madgui 1.0.2``: ``frame.model``
+  is now a ``Boxed`` object!
+- pass offsets as parameters to ``HitOnlineControl`` and fake DLL
+  (dependency injection!)
+- remove more knowledge from ``HitOnlineControl``
+- can now remove ``control`` member from fake DLL
+- remove ``.instances`` (~IID) logic in fake DLL
+- add methods to load parameters and SD values from disk
+- update fake SD values on "Execute" rather than on every call
+
+
 0.10.0
 ------
 Date: 01.06.2018
