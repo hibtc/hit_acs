@@ -172,7 +172,8 @@ class BeamOptikDllProxy(object):
         energy_val.value = float(energy.value)
         focus_val.value = float(focus.value)
         intensity_val.value = float(intensity.value)
-        gantry_angle_val.value = float(gantry_angle.value)
+        gantry_angle_val.value = float(
+            self.params.get('gantry_angle', gantry_angle.value))
 
     @_api_meth
     def GetSelectedVAcc(self, iid, vaccnum):
@@ -270,4 +271,5 @@ class BeamOptikDllProxy(object):
         energy_val.value = float(energy_chn.value)
         focus_val.value = float(focus_chn.value)
         intensity_val.value = float(intensity_chn.value)
-        gantry_angle_val.value = float(gantry_angle_chn.value)
+        gantry_angle_val.value = float(
+            self.params.get('gantry_angle', gantry_angle_chn.value))
