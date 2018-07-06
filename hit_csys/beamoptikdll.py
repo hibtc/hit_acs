@@ -131,7 +131,7 @@ class BeamOptikDLL(object):
         """
         done = Int()
         params = list(params)
-        if function == 'SelectMEFI':
+        if function in ('SelectMEFI', 'SelectMEFI_RKA'):
             params.insert(6, done)
         else:
             params.append(done)
@@ -215,6 +215,7 @@ class BeamOptikDLL(object):
         self._iid = None
         self._selected_vacc = None
         self._selected_efi = EFI(None, None, None, None)
+        self._variant = ('HIT', 'MIT')[hasattr(lib, 'SelectMEFI_RKA')]
 
     @property
     def iid(self):
@@ -268,7 +269,8 @@ class BeamOptikDLL(object):
         :param int energy: energy channel (1-255)
         :param int focus: focus channel (1-6)
         :param int intensity: intensity channel (1-15)
-        :param int gantry_angle: gantry angle index (1-36)
+        :param int gantry_angle: HIT: gantry angle index (1-36)
+                                 MIT: extraction time
         :return: physical EFI values
         :rtype: EFI
         :raises RuntimeError: if the exit code indicates any error
@@ -276,7 +278,8 @@ class BeamOptikDLL(object):
         CAUTION: SelectVAcc must be called before invoking this function!
         """
         values = [Double(), Double(), Double(), Double()]
-        self._call('SelectMEFI', self.iid, Int(vaccnum),
+        func = ('SelectMEFI', 'SelectMEFI_RKA')[self._variant == 'MIT']
+        self._call(func, self.iid, Int(vaccnum),
                    Int(energy), Int(focus), Int(intensity), Int(gantry_angle),
                    *values)
         if vaccnum == self._selected_vacc:
@@ -422,8 +425,13 @@ class BeamOptikDLL(object):
         :rtype: tuple(EFI, EFI)
         :raises RuntimeError: if the exit code indicates any error
         """
-        values = [Double(), Double(), Double(), Double()]
-        channels = [Int(), Int(), Int(), Int()]
-        self._call('GetMEFIValue', self.iid, *(values + channels))
-        return (EFI(*[v.value for v in values]),
-                EFI(*[c.value for c in channels]))
+        if self._variant == 'HIT':
+            values = [Double(), Double(), Double(), Double()]
+            channels = [Int(), Int(), Int(), Int()]
+            self._call('GetMEFIValue', self.iid, *(values + channels))
+            return (EFI(*[v.value for v in values]),
+                    EFI(*[c.value for c in channels]))
+        elif self._variant == 'MIT':
+            values = [Double(), Double(), Double(), Double()]
+            self._call('GetMEFIValue_RKA', self.iid, *values)
+            return (EFI(*[v.value for v in values]), None)
