@@ -324,7 +324,7 @@ class BeamOptikDLL(object):
         """
         self._call('SetFloatValue', self.iid, Str(name), Double(value), Int(options))
 
-    def ExecuteChanges(self, options):
+    def ExecuteChanges(self, options=ExecOptions.CalcDif):
         """
         Apply parameter changes.
 
@@ -349,7 +349,7 @@ class BeamOptikDLL(object):
                             type_.contents.value)
         self._call('SetNewValueCallback', self.iid, c_callback)
 
-    def GetFloatValueSD(self, name, options=0):
+    def GetFloatValueSD(self, name, options=GetSDOptions.Current):
         """
         Get current beam measurement at specific element.
 
@@ -365,7 +365,7 @@ class BeamOptikDLL(object):
 
     def GetLastFloatValueSD(self, name, vaccnum,
                             energy, focus, intensity, gantry_angle=0,
-                            options=0):
+                            options=GetSDOptions.Current):
         """
         Get previous beam measurement at specific element.
 
