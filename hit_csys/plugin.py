@@ -14,7 +14,7 @@ except ImportError:
 from pydicti import dicti
 
 from .beamoptikdll import BeamOptikDLL, ExecOptions
-from .stub import BeamOptikDllProxy
+from .stub import BImpostikDLL
 
 from madgui.core import unit
 from madgui.online import api
@@ -38,15 +38,14 @@ class StubLoader(api.PluginLoader):
     def load(cls, frame):
         offsets = find_offsets(frame.config.get('runtime_path', '.'))
         model = frame.model
-        proxy = BeamOptikDllProxy(model, offsets)
+        proxy = BImpostikDLL(model, offsets)
         if frame.config.get('str_file'):
             proxy.load_float_values(frame.config.str_file)
         if frame.config.get('sd_file'):
             proxy.load_sd_values(frame.config.sd_file)
-        dvm = BeamOptikDLL(proxy)
         params = load_dvm_parameters()
-        plugin = HitOnlineControl(dvm, params, frame.model, offsets)
-        plugin.connected.changed.connect(partial(update_ns, frame, dvm))
+        plugin = HitOnlineControl(proxy, params, frame.model, offsets)
+        plugin.connected.changed.connect(partial(update_ns, frame, proxy))
         plugin.connected.changed.connect(proxy.on_connected_changed)
         return plugin
 
