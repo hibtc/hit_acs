@@ -1,6 +1,18 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.12.0
+------
+Date: 15.07.2018
+
+- in test stub: use gantry angle from param list
+- fix outdated run.py
+- for ExecuteChanges set ``options`` parameter default as ``CalcDif``
+- adapt beamoptikdll module for Marburg variant
+- simplify the test stub module (directly mocks BeamOptikDLL class now,
+  instead of the ctypes backend)
+
+
 0.11.0
 ------
 Date: 25.06.2018

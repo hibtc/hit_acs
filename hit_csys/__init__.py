@@ -8,9 +8,9 @@ from __future__ import unicode_literals
 
 __title__ = 'hit_csys'
 __summary__ = 'Online control for the HIT accelerator facility.'
-__uri__ = 'https://bitbucket.org/coldfix/hit-online-control'
+__uri__ = 'https://github.com/hibtc/hit-csys'
 
-__version__ = '0.11.0'
+__version__ = '0.12.0'
 
 __author__ = 'Thomas Gläßle'
 __email__ = 't_glaessle@gmx.de'
