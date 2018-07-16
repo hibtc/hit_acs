@@ -34,7 +34,7 @@ class BImpostikDLL(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, model=None, offsets=None):
+    def __init__(self, model=None, offsets=None, variant='HIT'):
         """Initialize new library instance with no interface instances."""
         self.params = dicti()
         self.sd_values = dicti()
@@ -43,6 +43,7 @@ class BImpostikDLL(object):
         self.jitter = True
         self.auto_params = True
         self.auto_sd = True
+        self._variant = variant
 
     def load_float_values(self, filename):
         from madgui.core.model import read_strengths

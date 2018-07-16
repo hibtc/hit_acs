@@ -63,7 +63,8 @@ class DllLoader(api.PluginLoader):
     @classmethod
     def load(cls, frame):
         """Connect to online database."""
-        dvm = BeamOptikDLL.load_library()
+        dvm = BeamOptikDLL.load_library(
+            variant=frame.config.online_control.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(frame.config.get('runtime_path', '.'))
         plugin = HitOnlineControl(dvm, params, frame.model, offsets)

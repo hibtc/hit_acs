@@ -147,7 +147,7 @@ class BeamOptikDLL(object):
     #----------------------------------------
 
     @classmethod
-    def load_library(cls, filename=filename):
+    def load_library(cls, filename=filename, variant='HIT'):
         """
         Search for the DLL in PATH and return a BeamOptikDLL wrapper object.
 
@@ -155,7 +155,7 @@ class BeamOptikDLL(object):
         your PATH.
         """
         try:
-            return cls(ctypes.windll.LoadLibrary(filename))
+            return cls(ctypes.windll.LoadLibrary(filename), variant)
         except AttributeError:
             raise OSError("BeamOptikDLL.dll only available on windows.")
 
@@ -202,7 +202,7 @@ class BeamOptikDLL(object):
     # object API
     #----------------------------------------
 
-    def __init__(self, lib):
+    def __init__(self, lib, variant='HIT'):
         """
         Initialize member variables.
 
@@ -215,7 +215,7 @@ class BeamOptikDLL(object):
         self._iid = None
         self._selected_vacc = None
         self._selected_efi = EFI(None, None, None, None)
-        self._variant = ('HIT', 'MIT')[hasattr(lib, 'SelectMEFI_RKA')]
+        self._variant = variant
 
     @property
     def iid(self):
