@@ -35,14 +35,14 @@ class StubLoader(api.PluginLoader):
         return True
 
     @classmethod
-    def load(cls, frame):
-        offsets = find_offsets(frame.config.get('runtime_path', '.'))
+    def load(cls, frame, settings):
+        offsets = find_offsets(settings.get('runtime_path', '.'))
         model = frame.model
         proxy = BImpostikDLL(model, offsets)
-        if frame.config.get('str_file'):
-            proxy.load_float_values(frame.config.str_file)
-        if frame.config.get('sd_file'):
-            proxy.load_sd_values(frame.config.sd_file)
+        if settings.get('str_file'):
+            proxy.load_float_values(settings.str_file)
+        if settings.get('sd_file'):
+            proxy.load_sd_values(settings.sd_file)
         params = load_dvm_parameters()
         plugin = HitOnlineControl(proxy, params, frame.model, offsets)
         plugin.connected.changed.connect(partial(update_ns, frame, proxy))
@@ -61,12 +61,12 @@ class DllLoader(api.PluginLoader):
         return BeamOptikDLL.check_library()
 
     @classmethod
-    def load(cls, frame):
+    def load(cls, frame, settings):
         """Connect to online database."""
         dvm = BeamOptikDLL.load_library(
-            variant=frame.config.online_control.get('variant', 'HIT'))
+            variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
-        offsets = find_offsets(frame.config.get('runtime_path', '.'))
+        offsets = find_offsets(settings.get('runtime_path', '.'))
         plugin = HitOnlineControl(dvm, params, frame.model, offsets)
         plugin.connected.changed.connect(partial(update_ns, frame, dvm))
         return plugin
@@ -125,6 +125,14 @@ class HitOnlineControl(api.OnlinePlugin):
         """Disconnect from online database."""
         self._dvm.FreeInterfaceInstance()
         self.connected.set(False)
+
+    def export_settings(self):
+        mefi = self._dvm.GetMEFIValue()[1]
+        return {
+            'variant': self._dvm._variant,
+            'vacc': self._dvm.GetSelectedVAcc(),
+            'mefi': mefi and tuple(mefi),
+        }
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
