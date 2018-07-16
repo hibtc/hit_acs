@@ -5,6 +5,7 @@ Madgui online control plugin.
 
 from __future__ import absolute_import
 
+import logging
 from functools import partial
 try:
     from importlib_resources import open_binary as resource_stream
@@ -185,11 +186,17 @@ class HitOnlineControl(api.OnlinePlugin):
         """Read parameter. Return numeric value."""
         if param == 'gantry_angle':
             return self._dvm.GetMEFIValue()[0][3]
-        return self._dvm.GetFloatValue(param)
+        try:
+            return self._dvm.GetFloatValue(param)
+        except RuntimeError as e:
+            logging.error("{} for {!r}".format(e, param))
 
     def write_param(self, param, value):
         """Update parameter into control system."""
-        self._dvm.SetFloatValue(param, value)
+        try:
+            self._dvm.SetFloatValue(param, value)
+        except RuntimeError as e:
+            logging.error("{} for {!r} = {}".format(e, param, value))
 
     def get_beam(self):
         units  = unit.units
