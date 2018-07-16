@@ -46,8 +46,8 @@ class BImpostikDLL(object):
         self._variant = variant
 
     def load_float_values(self, filename):
-        from madgui.core.model import read_strengths
-        self.set_float_values(read_strengths(filename))
+        from madgui.util.export import read_str_file
+        self.set_float_values(read_str_file(filename))
 
     def load_sd_values(self, filename):
         import yaml
