@@ -67,7 +67,7 @@ class DllLoader(api.PluginLoader):
             variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
-        plugin = HitOnlineControl(dvm, params, frame.model, offsets)
+        plugin = HitOnlineControl(dvm, params, frame.model, offsets, settings)
         plugin.connected.changed.connect(partial(update_ns, frame, dvm))
         return plugin
 
@@ -97,7 +97,7 @@ def _get_sd_value(dvm, el_name, param_name):
 
 class HitOnlineControl(api.OnlinePlugin):
 
-    def __init__(self, dvm, params, model=None, offsets=None):
+    def __init__(self, dvm, params, model=None, offsets=None, settings=None):
         self._dvm = dvm
         self._params = params
         self._params.update({
@@ -113,6 +113,7 @@ class HitOnlineControl(api.OnlinePlugin):
         self._model = model
         self._offsets = {} if offsets is None else offsets
         self.connected = Bool(False)
+        self.settings = settings
 
     # OnlinePlugin API
 
@@ -120,9 +121,16 @@ class HitOnlineControl(api.OnlinePlugin):
         """Connect to online database (must be loaded)."""
         self._dvm.GetInterfaceInstance()
         self.connected.set(True)
+        settings = self.settings or {}
+        # We should probably select VAcc/MEFI based on loaded sequence… or the
+        # other way round? …anyway doing something unexpected might be even
+        # more inconvienient than simply using the last selected:
+        if settings.get('vacc'): self._dvm.SelectVAcc(settings['vacc'])
+        if settings.get('mefi'): self._dvm.SelectMEFI(*settings['mefi'])
 
     def disconnect(self):
         """Disconnect from online database."""
+        (self.settings or {}).update(self.export_settings())
         self._dvm.FreeInterfaceInstance()
         self.connected.set(False)
 
