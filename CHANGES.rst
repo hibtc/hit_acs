@@ -1,6 +1,17 @@
 CHANGELOG
 ~~~~~~~~~
 
+0.13.0
+------
+Date: 24.07.2018
+
+- retrieve variant from config (autodetection was a failure)
+- load config settings from new ``settings`` argument (madgui 1.14.0)
+- reselect previous vacc/mefi on startup
+- suppress exception when reading/writing missing parameters
+- update import path for read_str_file from madgui
+
+
 0.12.0
 ------
 Date: 15.07.2018
