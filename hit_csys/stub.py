@@ -43,8 +43,8 @@ class BImpostikDLL(object):
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.jitter = LightBox(True)
-        self.auto_params = True
-        self.auto_sd = True
+        self.auto_params = LightBox(True)
+        self.auto_sd = LightBox(True)
         self.menu = None
         self._variant = variant
 
@@ -70,8 +70,10 @@ class BImpostikDLL(object):
 
     def set_window(self, frame, menu):
         from madgui.util.collections import Bool
-        from madgui.core.menu import Item, extend
+        from madgui.core.menu import extend, Item, Separator
         self.jitter = Bool(self.jitter())
+        self.auto_params = Bool(self.auto_params())
+        self.auto_sd = Bool(self.auto_sd())
         self.menu = menu
         menu.clear()
         extend(frame, menu, [
@@ -82,10 +84,29 @@ class BImpostikDLL(object):
             Item('Add &magnet aberrations', None,
                  'Add small deltas to all magnet strengths',
                  self._aberrate_strengths),
+            Separator,
+            Item('Autoset readouts from model', None,
+                 'Autoset monitor readout values from model twiss table',
+                 self._toggle_auto_sd,
+                 checked=self.auto_sd),
+            Item('Autoset strengths from model', None,
+                 'Autoset magnet strengths from model values',
+                 self._toggle_auto_params,
+                 checked=self.auto_params),
         ])
 
     def _toggle_jitter(self):
         self.jitter.set(not self.jitter())
+
+    def _toggle_auto_sd(self):
+        self.auto_sd.set(not self.auto_sd())
+        if self.auto_sd() and self.model():
+            self.update_sd_values(self.model())
+
+    def _toggle_auto_params(self):
+        self.auto_params.set(not self.auto_params())
+        if self.auto_params() and self.model():
+            self.update_params(self.model())
 
     def _aberrate_strengths(self):
         for k in self.params:
@@ -93,11 +114,11 @@ class BImpostikDLL(object):
 
     def set_float_values(self, data):
         self.params = dicti(data)
-        self.auto_params = False
+        self.auto_params.set(False)
 
     def set_sd_values(self, data):
         self.sd_values = dicti(data)
-        self.auto_sd = False
+        self.auto_sd.set(False)
 
     def on_connected_changed(self, connected):
         if connected:
@@ -110,9 +131,9 @@ class BImpostikDLL(object):
 
     def on_model_changed(self, model):
         if model:
-            if self.auto_params:
+            if self.auto_params():
                 self.update_params(model)
-            if self.auto_sd:
+            if self.auto_sd():
                 self.update_sd_values(model)
 
     def update_params(self, model):
@@ -188,7 +209,7 @@ class BImpostikDLL(object):
     @_api_meth
     def ExecuteChanges(self, options):
         """Compute new measurements based on current model."""
-        if self.auto_sd:
+        if self.auto_sd():
             self.update_sd_values(self.model())
 
     @_api_meth
