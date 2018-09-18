@@ -183,13 +183,15 @@ class BImpostikDLL(object):
             return -9999.0
 
     def _get_jittered_sd(self, name):
-        val = self.sd_values[name]
+        value = self.sd_values[name]
+        if value == -9999:
+            return value
         prefix = name.lower().split('_')[0]
-        if prefix in ('widthx', 'widthy'):
-            val *= random.uniform(0.95, 1.1)
-        if prefix in ('posx', 'posy'):
-            val += random.uniform(-0.0005, 0.0005)
-        return val
+        jitter = random.gauss(0, 1e-4)
+        if prefix in ('widthx', 'widthy') and value > 0:
+            while value + jitter < 0:
+                jitter = random.gauss(0, 1e-4)
+        return value + jitter
 
     def update_sd_values(self, model):
         """Compute new measurements based on current model."""
