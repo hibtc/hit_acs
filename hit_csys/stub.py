@@ -79,10 +79,17 @@ class BImpostikDLL(object):
                  'Emulate continuous readouts using gaussian jitter',
                  self._toggle_jitter,
                  checked=self.jitter),
+            Item('Add &magnet aberrations', None,
+                 'Add small deltas to all magnet strengths',
+                 self._aberrate_strengths),
         ])
 
     def _toggle_jitter(self):
         self.jitter.set(not self.jitter())
+
+    def _aberrate_strengths(self):
+        for k in self.params:
+            self.params[k] *= random.uniform(0.95, 1.1)
 
     def set_float_values(self, data):
         self.params = dicti(data)
@@ -111,9 +118,6 @@ class BImpostikDLL(object):
     def update_params(self, model):
         self.params.clear()
         self.params.update(model.globals)
-        if self.jitter():
-            for k in self.params:
-                self.params[k] *= random.uniform(0.95, 1.1)
         self.params.update(dict(
             A_POSTSTRIP = 1.007281417537080e+00,
             Q_POSTSTRIP = 1.000000000000000e+00,
