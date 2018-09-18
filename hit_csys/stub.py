@@ -38,19 +38,20 @@ class BImpostikDLL(object):
 
     def __init__(self, model=None, offsets=None, settings=None, variant='HIT'):
         """Initialize new library instance with no interface instances."""
-        self.params = dicti()
-        self.sd_values = dicti()
-        self.sd_cache = TimeoutCache(self._get_jittered_sd)
-        self.model = model
-        self.offsets = {} if offsets is None else offsets
-        self.jitter = LightBox(True)
-        self.auto_params = LightBox(True)
-        self.auto_sd = LightBox(True)
-        self.menu = None
-        self.window = None
         if settings is None:
             settings = {}
+        self.params = dicti()
+        self.sd_values = dicti()
+        self.sd_cache = TimeoutCache(
+            self._get_jittered_sd, timeout=settings.get('jitter_interval', 1.0))
+        self.model = model
+        self.offsets = {} if offsets is None else offsets
         self.settings = settings
+        self.jitter = LightBox(settings.get('jitter', True))
+        self.auto_params = LightBox(settings.get('auto_params', True))
+        self.auto_sd = LightBox(settings.get('auto_sd', True))
+        self.menu = None
+        self.window = None
         self._variant = variant
         self.str_file = str_file = settings.get('str_file')
         self.sd_file = sd_file = settings.get('sd_file')
@@ -115,6 +116,16 @@ class BImpostikDLL(object):
                  'Load magnet strengths from strength export',
                  self._open_float_values),
         ])
+
+    def export_settings(self):
+        return {
+            'jitter': self.jitter(),
+            'jitter_interval': self.sd_cache.timeout,
+            'auto_sd': self.auto_sd(),
+            'auto_params': self.auto_params(),
+            'str_file': os.path.relpath(self.str_file),
+            'sd_file': os.path.relpath(self.sd_file),
+        }
 
     def _toggle_jitter(self):
         self.jitter.set(not self.jitter())
