@@ -4,6 +4,7 @@ Fake implementation of BeamOptikDLL wrapper. Emulates the API of
 offline testing of the basic functionality.
 """
 
+import os
 import logging
 import functools
 import random
@@ -35,7 +36,7 @@ class BImpostikDLL(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, model=None, offsets=None, variant='HIT'):
+    def __init__(self, model=None, offsets=None, settings=None, variant='HIT'):
         """Initialize new library instance with no interface instances."""
         self.params = dicti()
         self.sd_values = dicti()
@@ -46,14 +47,26 @@ class BImpostikDLL(object):
         self.auto_params = LightBox(True)
         self.auto_sd = LightBox(True)
         self.menu = None
+        self.window = None
+        if settings is None:
+            settings = {}
+        self.settings = settings
         self._variant = variant
+        self.str_file = str_file = settings.get('str_file')
+        self.sd_file = sd_file = settings.get('sd_file')
+        if str_file:
+            self.load_float_values(self.str_file)
+        if sd_file:
+            self.load_sd_values(self.sd_file)
 
     def load_float_values(self, filename):
         from madgui.util.export import read_str_file
+        self.str_file = filename = os.path.abspath(filename)
         self.set_float_values(read_str_file(filename))
 
     def load_sd_values(self, filename):
         import yaml
+        self.sd_file = filename = os.path.abspath(filename)
         with open(filename) as f:
             data = yaml.safe_load(f)
         cols = {
@@ -68,15 +81,16 @@ class BImpostikDLL(object):
             for param, value in values.items()
         })
 
-    def set_window(self, frame, menu):
+    def set_window(self, window, menu):
         from madgui.util.collections import Bool
         from madgui.core.menu import extend, Item, Separator
         self.jitter = Bool(self.jitter())
         self.auto_params = Bool(self.auto_params())
         self.auto_sd = Bool(self.auto_sd())
+        self.window = window
         self.menu = menu
         menu.clear()
-        extend(frame, menu, [
+        extend(window, menu, [
             Item('&Vary readouts', None,
                  'Emulate continuous readouts using gaussian jitter',
                  self._toggle_jitter,
@@ -93,6 +107,13 @@ class BImpostikDLL(object):
                  'Autoset magnet strengths from model values',
                  self._toggle_auto_params,
                  checked=self.auto_params),
+            Separator,
+            Item('Load readouts from file', None,
+                 'Load monitor readout values from monitor export',
+                 self._open_sd_values),
+            Item('Load strengths from file', None,
+                 'Load magnet strengths from strength export',
+                 self._open_float_values),
         ])
 
     def _toggle_jitter(self):
@@ -107,6 +128,34 @@ class BImpostikDLL(object):
         self.auto_params.set(not self.auto_params())
         if self.auto_params() and self.model():
             self.update_params(self.model())
+
+    def _open_sd_values(self):
+        from madgui.widget.filedialog import getOpenFileName
+        filters = [
+            ("YAML files", "*.yml", "*.yaml"),
+            ("All files", "*"),
+        ]
+        folder = self.window.str_folder or self.window.folder
+        if self.sd_file:
+            folder = os.path.dirname(self.sd_file)
+        filename = getOpenFileName(
+            self.window, 'Open monitor export', folder, filters)
+        if filename:
+            self.load_sd_values(filename)
+
+    def _open_float_values(self):
+        from madgui.widget.filedialog import getOpenFileName
+        filters = [
+            ("STR files", "*.str"),
+            ("All files", "*"),
+        ]
+        folder = self.window.str_folder or self.window.folder
+        if self.str_file:
+            folder = os.path.dirname(self.str_file)
+        filename = getOpenFileName(
+            self.window, 'Open strength export', folder, filters)
+        if filename:
+            self.load_float_values(filename)
 
     def _aberrate_strengths(self):
         for k in self.params:

@@ -39,11 +39,7 @@ class StubLoader(api.PluginLoader):
     def load(cls, frame, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         model = frame.model
-        proxy = BImpostikDLL(model, offsets)
-        if settings.get('str_file'):
-            proxy.load_float_values(settings.str_file)
-        if settings.get('sd_file'):
-            proxy.load_sd_values(settings.sd_file)
+        proxy = BImpostikDLL(model, offsets, settings)
         proxy.set_window(frame, frame.csys_settings_menu)
         params = load_dvm_parameters()
         plugin = HitOnlineControl(proxy, params, frame.model, offsets)
