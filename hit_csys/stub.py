@@ -7,7 +7,7 @@ offline testing of the basic functionality.
 import os
 import logging
 import functools
-import random
+from random import gauss, gammavariate as gamma
 
 from pydicti import dicti
 
@@ -299,14 +299,14 @@ class BImpostikDLL(object):
 
     def _get_jittered_sd(self, name):
         value = self.sd_values[name]
-        if value == -9999:
-            return value
         prefix = name.lower().split('_')[0]
-        jitter = random.gauss(0, 1e-4)
-        if prefix in ('widthx', 'widthy') and value > 0:
-            while value + jitter < 0:
-                jitter = random.gauss(0, 1e-4)
-        return value + jitter
+        if value != -9999:
+            mean, stddev = value, 1e-4      # 0.1 mm
+            if prefix in ('posx', 'posy'):
+                return gauss(mean, stddev)
+            if prefix in ('widthx', 'widthy'):
+                return gamma(mean**2/stddev**2, stddev**2/mean)
+        return value
 
     def update_sd_values(self, model):
         """Compute new measurements based on current model."""
