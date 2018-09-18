@@ -53,3 +53,18 @@ class TimeoutCache(object):
         if name not in values or timeout == 0:
             values[name] = self._get(name)
         return values[name]
+
+
+class LightBox(object):
+
+    """Lightweight substitute for ``madgui.util.collections.Boxed`` that can
+    be used in non-GUI environments."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def __call__(self):
+        return self._value
+
+    def set(self, value):
+        self._value = value

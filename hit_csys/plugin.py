@@ -44,6 +44,7 @@ class StubLoader(api.PluginLoader):
             proxy.load_float_values(settings.str_file)
         if settings.get('sd_file'):
             proxy.load_sd_values(settings.sd_file)
+        proxy.set_window(frame, frame.csys_settings_menu)
         params = load_dvm_parameters()
         plugin = HitOnlineControl(proxy, params, frame.model, offsets)
         plugin.connected.changed.connect(partial(update_ns, frame, proxy))

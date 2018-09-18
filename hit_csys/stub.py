@@ -11,7 +11,7 @@ import random
 from pydicti import dicti
 
 from .beamoptikdll import DVMStatus, GetOptions, EFI
-from .util import TimeoutCache
+from .util import TimeoutCache, LightBox
 
 
 __all__ = [
@@ -42,9 +42,10 @@ class BImpostikDLL(object):
         self.sd_cache = TimeoutCache(self._get_jittered_sd)
         self.model = model
         self.offsets = {} if offsets is None else offsets
-        self.jitter = True
+        self.jitter = LightBox(True)
         self.auto_params = True
         self.auto_sd = True
+        self.menu = None
         self._variant = variant
 
     def load_float_values(self, filename):
@@ -67,6 +68,22 @@ class BImpostikDLL(object):
             for param, value in values.items()
         })
 
+    def set_window(self, frame, menu):
+        from madgui.util.collections import Bool
+        from madgui.core.menu import Item, extend
+        self.jitter = Bool(self.jitter())
+        self.menu = menu
+        menu.clear()
+        extend(frame, menu, [
+            Item('&Vary readouts', None,
+                 'Emulate continuous readouts using gaussian jitter',
+                 self._toggle_jitter,
+                 checked=self.jitter),
+        ])
+
+    def _toggle_jitter(self):
+        self.jitter.set(not self.jitter())
+
     def set_float_values(self, data):
         self.params = dicti(data)
         self.auto_params = False
@@ -81,6 +98,8 @@ class BImpostikDLL(object):
             self.on_model_changed(self.model())
         else:
             self.model.changed.disconnect(self.on_model_changed)
+        if self.menu:
+            self.menu.setEnabled(connected)
 
     def on_model_changed(self, model):
         if model:
@@ -92,7 +111,7 @@ class BImpostikDLL(object):
     def update_params(self, model):
         self.params.clear()
         self.params.update(model.globals)
-        if self.jitter:
+        if self.jitter():
             for k in self.params:
                 self.params[k] *= random.uniform(0.95, 1.1)
         self.params.update(dict(
@@ -177,7 +196,7 @@ class BImpostikDLL(object):
     def GetFloatValueSD(self, name, options=0):
         """Get beam diagnostic value."""
         try:
-            storage = self.sd_cache if self.jitter else self.sd_values
+            storage = self.sd_cache if self.jitter() else self.sd_values
             return storage[name] * 1000
         except KeyError:
             return -9999.0
