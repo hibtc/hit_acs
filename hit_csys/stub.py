@@ -168,9 +168,20 @@ class BImpostikDLL(object):
         if filename:
             self.load_float_values(filename)
 
+    _aberration_magnitude = {
+        'ax':  1e-4,    # 0.1 mrad
+        'ay':  1e-4,
+        'dax': 1e-4,
+        'day': 1e-4,
+        'kl':  5e-3,    # 0.005
+    }
+
     def _aberrate_strengths(self):
         for k in self.params:
-            self.params[k] *= random.uniform(0.95, 1.1)
+            prefix = k.lower().split('_')[0]
+            sigma = self._aberration_magnitude.get(prefix)
+            if sigma is not None:
+                self.params[k] += random.gauss(0, sigma)
 
     def set_float_values(self, data):
         self.params = dicti(data)
