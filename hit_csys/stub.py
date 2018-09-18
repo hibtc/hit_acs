@@ -4,13 +4,15 @@ Fake implementation of BeamOptikDLL wrapper. Emulates the API of
 offline testing of the basic functionality.
 """
 
+import os
 import logging
 import functools
-import random
+from random import gauss, gammavariate as gamma
 
 from pydicti import dicti
 
 from .beamoptikdll import DVMStatus, GetOptions, EFI
+from .util import TimeoutCache, LightBox
 
 
 __all__ = [
@@ -34,23 +36,38 @@ class BImpostikDLL(object):
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
 
-    def __init__(self, model=None, offsets=None, variant='HIT'):
+    def __init__(self, model=None, offsets=None, settings=None, variant='HIT'):
         """Initialize new library instance with no interface instances."""
+        if settings is None:
+            settings = {}
         self.params = dicti()
         self.sd_values = dicti()
+        self.sd_cache = TimeoutCache(
+            self._get_jittered_sd, timeout=settings.get('jitter_interval', 1.0))
         self.model = model
         self.offsets = {} if offsets is None else offsets
-        self.jitter = True
-        self.auto_params = True
-        self.auto_sd = True
+        self.settings = settings
+        self.jitter = LightBox(settings.get('jitter', True))
+        self.auto_params = LightBox(settings.get('auto_params', True))
+        self.auto_sd = LightBox(settings.get('auto_sd', True))
+        self.menu = None
+        self.window = None
         self._variant = variant
+        self.str_file = str_file = settings.get('str_file')
+        self.sd_file = sd_file = settings.get('sd_file')
+        if str_file:
+            self.load_float_values(self.str_file)
+        if sd_file:
+            self.load_sd_values(self.sd_file)
 
     def load_float_values(self, filename):
         from madgui.util.export import read_str_file
+        self.str_file = filename = os.path.abspath(filename)
         self.set_float_values(read_str_file(filename))
 
     def load_sd_values(self, filename):
         import yaml
+        self.sd_file = filename = os.path.abspath(filename)
         with open(filename) as f:
             data = yaml.safe_load(f)
         cols = {
@@ -65,13 +82,114 @@ class BImpostikDLL(object):
             for param, value in values.items()
         })
 
+    def set_window(self, window, menu):
+        from madgui.util.collections import Bool
+        from madgui.core.menu import extend, Item, Separator
+        self.jitter = Bool(self.jitter())
+        self.auto_params = Bool(self.auto_params())
+        self.auto_sd = Bool(self.auto_sd())
+        self.window = window
+        self.menu = menu
+        menu.clear()
+        extend(window, menu, [
+            Item('&Vary readouts', None,
+                 'Emulate continuous readouts using gaussian jitter',
+                 self._toggle_jitter,
+                 checked=self.jitter),
+            Item('Add &magnet aberrations', None,
+                 'Add small deltas to all magnet strengths',
+                 self._aberrate_strengths),
+            Separator,
+            Item('Autoset readouts from model', None,
+                 'Autoset monitor readout values from model twiss table',
+                 self._toggle_auto_sd,
+                 checked=self.auto_sd),
+            Item('Autoset strengths from model', None,
+                 'Autoset magnet strengths from model values',
+                 self._toggle_auto_params,
+                 checked=self.auto_params),
+            Separator,
+            Item('Load readouts from file', None,
+                 'Load monitor readout values from monitor export',
+                 self._open_sd_values),
+            Item('Load strengths from file', None,
+                 'Load magnet strengths from strength export',
+                 self._open_float_values),
+        ])
+
+    def export_settings(self):
+        return {
+            'jitter': self.jitter(),
+            'jitter_interval': self.sd_cache.timeout,
+            'auto_sd': self.auto_sd(),
+            'auto_params': self.auto_params(),
+            'str_file': os.path.relpath(self.str_file),
+            'sd_file': os.path.relpath(self.sd_file),
+        }
+
+    def _toggle_jitter(self):
+        self.jitter.set(not self.jitter())
+
+    def _toggle_auto_sd(self):
+        self.auto_sd.set(not self.auto_sd())
+        if self.auto_sd() and self.model():
+            self.update_sd_values(self.model())
+
+    def _toggle_auto_params(self):
+        self.auto_params.set(not self.auto_params())
+        if self.auto_params() and self.model():
+            self.update_params(self.model())
+
+    def _open_sd_values(self):
+        from madgui.widget.filedialog import getOpenFileName
+        filters = [
+            ("YAML files", "*.yml", "*.yaml"),
+            ("All files", "*"),
+        ]
+        folder = self.window.str_folder or self.window.folder
+        if self.sd_file:
+            folder = os.path.dirname(self.sd_file)
+        filename = getOpenFileName(
+            self.window, 'Open monitor export', folder, filters)
+        if filename:
+            self.load_sd_values(filename)
+
+    def _open_float_values(self):
+        from madgui.widget.filedialog import getOpenFileName
+        filters = [
+            ("STR files", "*.str"),
+            ("All files", "*"),
+        ]
+        folder = self.window.str_folder or self.window.folder
+        if self.str_file:
+            folder = os.path.dirname(self.str_file)
+        filename = getOpenFileName(
+            self.window, 'Open strength export', folder, filters)
+        if filename:
+            self.load_float_values(filename)
+
+    _aberration_magnitude = {
+        'ax':  1e-4,    # 0.1 mrad
+        'ay':  1e-4,
+        'dax': 1e-4,
+        'day': 1e-4,
+        'kl':  5e-3,    # 0.005
+    }
+
+    def _aberrate_strengths(self):
+        for k in self.params:
+            prefix = k.lower().split('_')[0]
+            sigma = self._aberration_magnitude.get(prefix)
+            if sigma is not None:
+                self.params[k] += random.gauss(0, sigma)
+
     def set_float_values(self, data):
         self.params = dicti(data)
-        self.auto_params = False
+        self.auto_params.set(False)
 
     def set_sd_values(self, data):
         self.sd_values = dicti(data)
-        self.auto_sd = False
+        self.auto_sd.set(False)
 
     def on_connected_changed(self, connected):
         if connected:
@@ -79,20 +197,19 @@ class BImpostikDLL(object):
             self.on_model_changed(self.model())
         else:
             self.model.changed.disconnect(self.on_model_changed)
+        if self.menu:
+            self.menu.setEnabled(connected)
 
     def on_model_changed(self, model):
         if model:
-            if self.auto_params:
+            if self.auto_params():
                 self.update_params(model)
-            if self.auto_sd:
+            if self.auto_sd():
                 self.update_sd_values(model)
 
     def update_params(self, model):
         self.params.clear()
         self.params.update(model.globals)
-        if self.jitter:
-            for k in self.params:
-                self.params[k] *= random.uniform(0.95, 1.1)
         self.params.update(dict(
             A_POSTSTRIP = 1.007281417537080e+00,
             Q_POSTSTRIP = 1.000000000000000e+00,
@@ -163,7 +280,7 @@ class BImpostikDLL(object):
     @_api_meth
     def ExecuteChanges(self, options):
         """Compute new measurements based on current model."""
-        if self.auto_sd:
+        if self.auto_sd():
             self.update_sd_values(self.model())
 
     @_api_meth
@@ -175,9 +292,21 @@ class BImpostikDLL(object):
     def GetFloatValueSD(self, name, options=0):
         """Get beam diagnostic value."""
         try:
-            return self.sd_values[name] * 1000
+            storage = self.sd_cache if self.jitter() else self.sd_values
+            return storage[name] * 1000
         except KeyError:
             return -9999.0
+
+    def _get_jittered_sd(self, name):
+        value = self.sd_values[name]
+        prefix = name.lower().split('_')[0]
+        if value != -9999:
+            mean, stddev = value, 1e-4      # 0.1 mm
+            if prefix in ('posx', 'posy'):
+                return gauss(mean, stddev)
+            if prefix in ('widthx', 'widthy'):
+                return gamma(mean**2/stddev**2, stddev**2/mean)
+        return value
 
     def update_sd_values(self, model):
         """Compute new measurements based on current model."""
@@ -192,11 +321,6 @@ class BImpostikDLL(object):
                     'posx': -twiss.x - dx,
                     'posy': twiss.y - dy,
                 }
-                if self.jitter:
-                    values['widthx'] *= random.uniform(0.95, 1.1)
-                    values['widthy'] *= random.uniform(0.95, 1.1)
-                    values['posx'] += random.uniform(-0.0005, 0.0005)
-                    values['posy'] += random.uniform(-0.0005, 0.0005)
                 self.sd_values.update({
                     key + '_' + elem.name: val
                     for key, val in values.items()

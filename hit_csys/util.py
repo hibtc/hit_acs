@@ -4,6 +4,7 @@ Utilities for unicode IO.
 
 import csv
 import sys
+import time
 
 
 __all__ = [
@@ -22,3 +23,48 @@ else:
         """Load unicode CSV file."""
         lines = [l.decode(encoding) for l in lines]
         return csv.reader(lines, **kwargs)
+
+
+class TimeoutCache(object):
+
+    """
+    Cache that cycles every ``timeout`` seconds.
+
+    The invalidation interval is global, not per-entry.
+
+    ``timeout=0`` means no caching,
+    ``timeout=-1`` means infinite caching.
+    """
+
+    def __init__(self, get, timeout=1.0):
+        self._get = get
+        self._beg = time.time()
+        self.timeout = timeout
+        self.values = {}
+
+    def __getitem__(self, name):
+        now = time.time()
+        beg = self._beg
+        timeout = self.timeout
+        values = self.values
+        if now - beg > timeout > 0:
+            self._beg = now - (now - beg) % timeout
+            values.clear()
+        if name not in values or timeout == 0:
+            values[name] = self._get(name)
+        return values[name]
+
+
+class LightBox(object):
+
+    """Lightweight substitute for ``madgui.util.collections.Boxed`` that can
+    be used in non-GUI environments."""
+
+    def __init__(self, value):
+        self._value = value
+
+    def __call__(self):
+        return self._value
+
+    def set(self, value):
+        self._value = value

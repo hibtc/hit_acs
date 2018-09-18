@@ -39,11 +39,8 @@ class StubLoader(api.PluginLoader):
     def load(cls, frame, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         model = frame.model
-        proxy = BImpostikDLL(model, offsets)
-        if settings.get('str_file'):
-            proxy.load_float_values(settings.str_file)
-        if settings.get('sd_file'):
-            proxy.load_sd_values(settings.sd_file)
+        proxy = BImpostikDLL(model, offsets, settings)
+        proxy.set_window(frame, frame.csys_settings_menu)
         params = load_dvm_parameters()
         plugin = HitOnlineControl(proxy, params, frame.model, offsets)
         plugin.connected.changed.connect(partial(update_ns, frame, proxy))
@@ -137,11 +134,14 @@ class HitOnlineControl(api.OnlinePlugin):
 
     def export_settings(self):
         mefi = self._dvm.GetMEFIValue()[1]
-        return {
+        settings = {
             'variant': self._dvm._variant,
             'vacc': self._dvm.GetSelectedVAcc(),
             'mefi': mefi and tuple(mefi),
         }
+        if hasattr(self._dvm, 'export_settings'):
+            settings.update(self._dvm.export_settings())
+        return settings
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
