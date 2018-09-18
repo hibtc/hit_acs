@@ -11,6 +11,7 @@ import random
 from pydicti import dicti
 
 from .beamoptikdll import DVMStatus, GetOptions, EFI
+from .util import TimeoutCache
 
 
 __all__ = [
@@ -38,6 +39,7 @@ class BImpostikDLL(object):
         """Initialize new library instance with no interface instances."""
         self.params = dicti()
         self.sd_values = dicti()
+        self.sd_cache = TimeoutCache(self._get_jittered_sd)
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.jitter = True
@@ -175,9 +177,19 @@ class BImpostikDLL(object):
     def GetFloatValueSD(self, name, options=0):
         """Get beam diagnostic value."""
         try:
-            return self.sd_values[name] * 1000
+            storage = self.sd_cache if self.jitter else self.sd_values
+            return storage[name] * 1000
         except KeyError:
             return -9999.0
+
+    def _get_jittered_sd(self, name):
+        val = self.sd_values[name]
+        prefix = name.lower().split('_')[0]
+        if prefix in ('widthx', 'widthy'):
+            val *= random.uniform(0.95, 1.1)
+        if prefix in ('posx', 'posy'):
+            val += random.uniform(-0.0005, 0.0005)
+        return val
 
     def update_sd_values(self, model):
         """Compute new measurements based on current model."""
@@ -192,11 +204,6 @@ class BImpostikDLL(object):
                     'posx': -twiss.x - dx,
                     'posy': twiss.y - dy,
                 }
-                if self.jitter:
-                    values['widthx'] *= random.uniform(0.95, 1.1)
-                    values['widthy'] *= random.uniform(0.95, 1.1)
-                    values['posx'] += random.uniform(-0.0005, 0.0005)
-                    values['posy'] += random.uniform(-0.0005, 0.0005)
                 self.sd_values.update({
                     key + '_' + elem.name: val
                     for key, val in values.items()
