@@ -181,7 +181,7 @@ class BImpostikDLL(object):
             prefix = k.lower().split('_')[0]
             sigma = self._aberration_magnitude.get(prefix)
             if sigma is not None:
-                self.params[k] += random.gauss(0, sigma)
+                self.params[k] += gauss(0, sigma)
 
     def set_float_values(self, data):
         self.params = dicti(data)
