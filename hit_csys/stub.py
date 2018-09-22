@@ -84,7 +84,7 @@ class BImpostikDLL(object):
 
     def set_window(self, window, menu):
         from madgui.util.collections import Bool
-        from madgui.core.menu import extend, Item, Separator
+        from madgui.util.menu import extend, Item, Separator
         self.jitter = Bool(self.jitter())
         self.auto_params = Bool(self.auto_params())
         self.auto_sd = Bool(self.auto_sd())

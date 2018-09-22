@@ -6,7 +6,7 @@ import os
 from glob import glob
 from xml.etree import ElementTree
 
-from madgui.core.unit import from_ui, from_config
+from madgui.util.unit import from_ui, from_config
 
 
 PREFIX_ROOM = {'Room1': 'T1', 'Room2': 'T2', 'Room3': 'T3', 'Room4': 'T4'}

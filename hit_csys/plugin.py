@@ -17,8 +17,8 @@ from pydicti import dicti
 from .beamoptikdll import BeamOptikDLL, ExecOptions
 from .stub import BImpostikDLL
 
-from madgui.core import unit
-from madgui.online import api
+import madgui.util.unit as unit
+import madgui.online.api as api
 from madgui.util.collections import Bool
 
 from .dvm_parameters import load_csv

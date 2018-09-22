@@ -3,7 +3,7 @@
 Tools to work with DVM paramater list.
 """
 
-from madgui.core import unit
+import madgui.util.unit as unit
 from madgui.online.api import ParamInfo
 from hit_csys.util import csv_unicode_reader
 
