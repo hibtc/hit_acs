@@ -25,7 +25,7 @@ from .dvm_parameters import load_csv
 from .offsets import find_offsets
 
 
-class StubLoader(api.PluginLoader):
+class StubLoader(api.Loader):
 
     title = '&test stub'
     descr = 'a stub version (for offline testing)'
@@ -48,7 +48,7 @@ class StubLoader(api.PluginLoader):
         return plugin
 
 
-class DllLoader(api.PluginLoader):
+class DllLoader(api.Loader):
 
     title = '&online control'
     descr = 'the online control'
@@ -93,7 +93,7 @@ def _get_sd_value(dvm, el_name, param_name):
     return plain_value / 1000       # mm to m
 
 
-class HitOnlineControl(api.OnlinePlugin):
+class HitOnlineControl(api.Backend):
 
     def __init__(self, dvm, params, model=None, offsets=None, settings=None):
         self._dvm = dvm
@@ -113,7 +113,7 @@ class HitOnlineControl(api.OnlinePlugin):
         self.connected = Bool(False)
         self.settings = settings
 
-    # OnlinePlugin API
+    # Backend API
 
     def connect(self):
         """Connect to online database (must be loaded)."""
