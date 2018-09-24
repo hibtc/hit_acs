@@ -25,51 +25,6 @@ from .dvm_parameters import load_csv
 from .offsets import find_offsets
 
 
-class StubLoader(api.Loader):
-
-    title = '&test stub'
-    descr = 'a stub version (for offline testing)'
-    hotkey = 'Ctrl+C'
-
-    @classmethod
-    def check_avail(cls):
-        return True
-
-    @classmethod
-    def load(cls, frame, settings):
-        offsets = find_offsets(settings.get('runtime_path', '.'))
-        model = frame.model
-        proxy = BImpostikDLL(model, offsets, settings)
-        proxy.set_window(frame, frame.csys_settings_menu)
-        params = load_dvm_parameters()
-        plugin = HitOnlineControl(proxy, params, frame.model, offsets)
-        plugin.connected.changed.connect(partial(update_ns, frame, proxy))
-        plugin.connected.changed.connect(proxy.on_connected_changed)
-        return plugin
-
-
-class DllLoader(api.Loader):
-
-    title = '&online control'
-    descr = 'the online control'
-    hotkey = None
-
-    @classmethod
-    def check_avail(cls):
-        return BeamOptikDLL.check_library()
-
-    @classmethod
-    def load(cls, frame, settings):
-        """Connect to online database."""
-        dvm = BeamOptikDLL.load_library(
-            variant=settings.get('variant', 'HIT'))
-        params = load_dvm_parameters()
-        offsets = find_offsets(settings.get('runtime_path', '.'))
-        plugin = HitOnlineControl(dvm, params, frame.model, offsets, settings)
-        plugin.connected.changed.connect(partial(update_ns, frame, dvm))
-        return plugin
-
-
 def update_ns(frame, dll, connected):
     if connected:
         frame.context['dll'] = dll
@@ -93,7 +48,7 @@ def _get_sd_value(dvm, el_name, param_name):
     return plain_value / 1000       # mm to m
 
 
-class HitOnlineControl(api.Backend):
+class _HitBackend(api.Backend):
 
     def __init__(self, dvm, params, model=None, offsets=None, settings=None):
         self._dvm = dvm
@@ -211,6 +166,51 @@ class HitOnlineControl(api.Backend):
             'mass':     unit.from_ui('mass',   mass),
             'energy':   unit.from_ui('energy', mass * (e_kin + 1*units.c**2)),
         }
+
+
+class OnlineBackend(_HitBackend):
+
+    title = '&online control'
+    descr = 'the online control'
+    hotkey = None
+
+    @classmethod
+    def check_avail(cls):
+        return BeamOptikDLL.check_library()
+
+    @classmethod
+    def load(cls, frame, settings):
+        """Connect to online database."""
+        dvm = BeamOptikDLL.load_library(
+            variant=settings.get('variant', 'HIT'))
+        params = load_dvm_parameters()
+        offsets = find_offsets(settings.get('runtime_path', '.'))
+        plugin = cls(dvm, params, frame.model, offsets, settings)
+        plugin.connected.changed.connect(partial(update_ns, frame, dvm))
+        return plugin
+
+
+class TestBackend(_HitBackend):
+
+    title = '&test stub'
+    descr = 'a stub version (for offline testing)'
+    hotkey = 'Ctrl+C'
+
+    @classmethod
+    def check_avail(cls):
+        return True
+
+    @classmethod
+    def load(cls, frame, settings):
+        offsets = find_offsets(settings.get('runtime_path', '.'))
+        model = frame.model
+        proxy = BImpostikDLL(model, offsets, settings)
+        proxy.set_window(frame, frame.csys_settings_menu)
+        params = load_dvm_parameters()
+        plugin = cls(proxy, params, frame.model, offsets)
+        plugin.connected.changed.connect(partial(update_ns, frame, proxy))
+        plugin.connected.changed.connect(proxy.on_connected_changed)
+        return plugin
 
 
 ENERGY_PARAM = {
