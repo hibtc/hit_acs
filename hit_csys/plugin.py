@@ -26,10 +26,7 @@ from .offsets import find_offsets
 
 
 def update_ns(frame, dll, connected):
-    if connected:
-        frame.context['dll'] = dll
-    else:
-        frame.context.pop('dll', None)
+    frame.user_ns.dll = dll if connected else None
 
 
 def load_dvm_parameters():
