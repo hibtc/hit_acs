@@ -25,8 +25,8 @@ from .dvm_parameters import load_csv
 from .offsets import find_offsets
 
 
-def update_ns(frame, dll, connected):
-    frame.user_ns.dll = dll if connected else None
+def update_ns(ns, dll, connected):
+    ns.dll = dll if connected else None
 
 
 def load_dvm_parameters():
@@ -167,26 +167,27 @@ class _HitBackend(api.Backend):
 
 class OnlineBackend(_HitBackend):
 
-    def __init__(self, frame, settings):
+    def __init__(self, session, settings):
         """Connect to online database."""
         dvm = BeamOptikDLL.load_library(
             variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
-        super.__init__(dvm, params, frame.model, offsets, settings)
-        self.connected.changed.connect(partial(update_ns, frame, dvm))
+        super.__init__(dvm, params, session.model, offsets, settings)
+        self.connected.changed.connect(partial(update_ns, session.user_ns, dvm))
 
 
 class TestBackend(_HitBackend):
 
-    def __init__(self, frame, settings):
+    def __init__(self, session, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
-        model = frame.model
+        model = session.model
         proxy = BImpostikDLL(model, offsets, settings)
-        proxy.set_window(frame, frame.csys_settings_menu)
+        proxy.set_window(
+            session.window(), session.window().csys_settings_menu)
         params = load_dvm_parameters()
-        super().__init__(proxy, params, frame.model, offsets)
-        self.connected.changed.connect(partial(update_ns, frame, proxy))
+        super().__init__(proxy, params, session.model, offsets)
+        self.connected.changed.connect(partial(update_ns, session.user_ns, proxy))
         self.connected.changed.connect(proxy.on_connected_changed)
 
 
