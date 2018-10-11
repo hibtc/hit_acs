@@ -43,7 +43,8 @@ class BImpostikDLL(object):
         self.params = dicti()
         self.sd_values = dicti()
         self.sd_cache = TimeoutCache(
-            self._get_jittered_sd, timeout=settings.get('jitter_interval', 1.0))
+            self._get_jittered_sd,
+            timeout=settings.get('jitter_interval', 1.0))
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.settings = settings

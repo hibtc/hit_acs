@@ -214,7 +214,9 @@ class BeamOptikDLL(object):
     def iid(self):
         """Interface instance ID."""
         if self._iid is None:
-            raise RuntimeError("GetInterfaceInstance must be called before using other methods.")
+            raise RuntimeError(
+                "GetInterfaceInstance must be called "
+                "before using other methods.")
         return self._iid
 
     def __bool__(self):
@@ -318,7 +320,8 @@ class BeamOptikDLL(object):
 
         Changes take effect after calling :func:`ExecuteChanges`.
         """
-        self._call('SetFloatValue', self.iid, Str(name), Double(value), Int(options))
+        self._call('SetFloatValue', self.iid,
+                   Str(name), Double(value), Int(options))
 
     def ExecuteChanges(self, options=ExecOptions.CalcDif):
         """
@@ -390,7 +393,8 @@ class BeamOptikDLL(object):
                 energy != sel_efi.energy or
                 focus != sel_efi.focus or
                 intensity != sel_efi.intensity):
-            logging.warn("You must call SelectEFI() before StartRampDataGeneration()!")
+            logging.warn(
+                "You must call SelectEFI() before StartRampDataGeneration()!")
         return order_num.value
 
     def GetRampDataValue(self, order_num, event_num, delay,

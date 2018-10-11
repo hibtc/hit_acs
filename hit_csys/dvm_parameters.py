@@ -72,7 +72,8 @@ _csv_column_names = [
     '',                 # Nr. für Link
     'name',             # Code Param (GSI-Nomenklatur)
     '',                 # Code Gerät (GSI- NomenkLatur) entspr. DCU!
-    '',                 # Code Gruppe (=Kalkulationsgruppe); möglichst GSI-NomenkLatur
+    '',                 # Code Gruppe (=Kalkulationsgruppe); möglichst
+                        #       GSI-NomenkLatur
     'ui_name',          # GUI Beschriftung Parameter (ohne Einheit)
     'ui_hint',          # GUI Beschriftung Hint
     '',                 # Position ExpertGrids
@@ -98,7 +99,8 @@ _csv_column_names = [
     '',                 # Link auf Minimalwert
     '',                 # Code Min/Max- Rechen-vorschrift
     '',                 # Master-gruppe
-    '',                 # Defaultwert Änderung pro Pfeiltasten-druck/Maus-radsegment in Einheit GUI
+    '',                 # Defaultwert Änderung pro Pfeiltasten-druck/
+                        #       Maus-radsegment in Einheit GUI
     '',                 # Im laufenden Betrieb änderbar (ja/ nein)
     '',                 # Link auf zugehörigen sekundären Wert
 ]

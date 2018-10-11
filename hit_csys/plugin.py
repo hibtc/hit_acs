@@ -174,7 +174,8 @@ class OnlineBackend(_HitBackend):
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
         super.__init__(dvm, params, session.model, offsets, settings)
-        self.connected.changed.connect(partial(update_ns, session.user_ns, dvm))
+        self.connected.changed.connect(
+            partial(update_ns, session.user_ns, dvm))
 
 
 class TestBackend(_HitBackend):
@@ -186,8 +187,9 @@ class TestBackend(_HitBackend):
         proxy.set_window(session.window())
         params = load_dvm_parameters()
         super().__init__(proxy, params, session.model, offsets)
-        self.connected.changed.connect(partial(update_ns, session.user_ns, proxy))
         self.connected.changed.connect(proxy.on_connected_changed)
+        self.connected.changed.connect(
+            partial(update_ns, session.user_ns, proxy))
 
 
 ENERGY_PARAM = {
