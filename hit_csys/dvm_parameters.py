@@ -8,9 +8,7 @@ from madgui.online.api import ParamInfo
 from hit_csys.util import csv_unicode_reader
 
 
-#----------------------------------------
 # CSV column types
-#----------------------------------------
 
 def CsvStr(s):
     return s

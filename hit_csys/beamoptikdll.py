@@ -88,9 +88,7 @@ class BeamOptikDLL(object):
     else:
         filename = 'BeamOptikDLL.dll'
 
-    #----------------------------------------
     # internal methods
-    #----------------------------------------
 
     error_messages = [
         None,
@@ -142,9 +140,7 @@ class BeamOptikDLL(object):
         func(*args)
         self.check_return(done.value)
 
-    #----------------------------------------
     # things that don't require IID to be set:
-    #----------------------------------------
 
     @classmethod
     def load_library(cls, filename=filename, variant='HIT'):
@@ -198,9 +194,7 @@ class BeamOptikDLL(object):
         """Shared library proxy."""
         return self._lib
 
-    #----------------------------------------
     # object API
-    #----------------------------------------
 
     def __init__(self, lib, variant='HIT'):
         """
