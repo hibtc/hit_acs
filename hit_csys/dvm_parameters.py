@@ -45,10 +45,11 @@ def load_csv_data(rows):
 
 
 def _parse_csv_data(rows):
-    parse_row = lambda row: ParamInfo(**{
-        n: _csv_column_types[n](row[i].strip())
-        for n, i in _csv_column_index.items()
-    })
+    def parse_row(row):
+        return ParamInfo(**{
+            n: _csv_column_types[n](row[i].strip())
+            for n, i in _csv_column_index.items()
+        })
     cluster_name = ''
     cluster_items = []
     for row in rows:
