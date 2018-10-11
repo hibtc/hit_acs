@@ -183,8 +183,7 @@ class TestBackend(_HitBackend):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         model = session.model
         proxy = BImpostikDLL(model, offsets, settings)
-        proxy.set_window(
-            session.window(), session.window().csys_settings_menu)
+        proxy.set_window(session.window())
         params = load_dvm_parameters()
         super().__init__(proxy, params, session.model, offsets)
         self.connected.changed.connect(partial(update_ns, session.user_ns, proxy))

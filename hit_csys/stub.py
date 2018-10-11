@@ -82,16 +82,18 @@ class BImpostikDLL(object):
             for param, value in values.items()
         })
 
-    def set_window(self, window, menu):
+    def set_window(self, window):
+        self.window = window
+        self.menu = window and window.csys_settings_menu
+        if window is None:
+            return
         from madgui.util.collections import Bool
         from madgui.util.menu import extend, Item, Separator
         self.jitter = Bool(self.jitter())
         self.auto_params = Bool(self.auto_params())
         self.auto_sd = Bool(self.auto_sd())
-        self.window = window
-        self.menu = menu
-        menu.clear()
-        extend(window, menu, [
+        self.menu.clear()
+        extend(window, self.menu, [
             Item('&Vary readouts', None,
                  'Emulate continuous readouts using gaussian jitter',
                  self._toggle_jitter,
