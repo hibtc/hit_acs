@@ -66,6 +66,7 @@ def _parse_csv_data(rows):
     if cluster_items:
         yield (cluster_name, cluster_items)
 
+
 # all columns in csv file:
 _csv_column_names = [
     '',                 # Nr. für Link
