@@ -75,8 +75,10 @@ class _HitBackend(api.Backend):
         # We should probably select VAcc/MEFI based on loaded sequence… or the
         # other way round? …anyway doing something unexpected might be even
         # more inconvienient than simply using the last selected:
-        if settings.get('vacc'): self._dvm.SelectVAcc(settings['vacc'])
-        if settings.get('mefi'): self._dvm.SelectMEFI(settings['vacc'], *settings['mefi'])
+        if settings.get('vacc'):
+            self._dvm.SelectVAcc(settings['vacc'])
+        if settings.get('mefi'):
+            self._dvm.SelectMEFI(settings['vacc'], *settings['mefi'])
 
     def disconnect(self):
         """Disconnect from online database."""
