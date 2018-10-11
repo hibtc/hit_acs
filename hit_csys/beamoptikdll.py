@@ -16,6 +16,7 @@ import platform
 def _encode(s):
     return s if isinstance(s, bytes) else s.encode('utf-8')
 
+
 def _decode(s):
     return s.decode('utf-8') if isinstance(s, bytes) else s
 
