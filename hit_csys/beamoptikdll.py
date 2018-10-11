@@ -7,7 +7,7 @@ Python wrapper for 'BeamOptikDLL.dll'.
 # install or provide anything else (except for the actual DLL of course).
 
 from collections import namedtuple
-from ctypes import c_double as Double, c_int as Int
+from ctypes import c_double as Double, c_int as Int, POINTER as PTR
 import ctypes
 import logging
 import platform
@@ -134,10 +134,8 @@ class BeamOptikDLL(object):
             params.insert(6, done)
         else:
             params.append(done)
-        def param(p):
-            return p if isinstance(p, _Str) else ctypes.byref(p)
         func = getattr(self.lib, function)
-        args = tuple(map(param, params))
+        args = [p if isinstance(p, _Str) else ctypes.byref(p) for p in params]
         func(*args)
         self.check_return(done.value)
 
@@ -339,7 +337,6 @@ class BeamOptikDLL(object):
         :param callback: ``callable(name:str, val:float, type:int)``
         :raises RuntimeError: if the exit code indicates any error
         """
-        PTR = ctypes.POINTER
         @ctypes.WINFUNCTYPE(None, PTR(_Str), PTR(Double), PTR(Int))
         def c_callback(name, value, type_):
             return callback(_decode(name.value),
