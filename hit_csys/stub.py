@@ -123,8 +123,8 @@ class BImpostikDLL(object):
             'jitter_interval': self.sd_cache.timeout,
             'auto_sd': self.auto_sd(),
             'auto_params': self.auto_params(),
-            'str_file': os.path.relpath(self.str_file),
-            'sd_file': os.path.relpath(self.sd_file),
+            'str_file': safe_relpath(self.str_file),
+            'sd_file': safe_relpath(self.sd_file),
         }
 
     def _toggle_jitter(self):
@@ -361,3 +361,10 @@ class BImpostikDLL(object):
             float(channels.intensity),
             float(self.params.get('gantry_angle', channels.gantry_angle)))
         return (values, channels)
+
+
+def safe_relpath(path, start=None):
+    try:
+        return path and os.path.relpath(path, start)
+    except ValueError:  # e.g. different drive on windows
+        return path
