@@ -21,13 +21,13 @@ def _decode(s):
 
 
 if platform.architecture()[0] == '64bit':
-    _Str = ctypes.c_wchar_p         # constructor wants unicode
     def Str(s):
         return _Str(_decode(s))
+    _Str = ctypes.c_wchar_p         # constructor wants unicode
 else:
-    _Str = ctypes.c_char_p          # constructor wants bytes
     def Str(s):
         return _Str(_encode(s))
+    _Str = ctypes.c_char_p          # constructor wants bytes
 
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
