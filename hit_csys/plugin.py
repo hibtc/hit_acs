@@ -75,8 +75,10 @@ class _HitBackend(api.Backend):
         # We should probably select VAcc/MEFI based on loaded sequence… or the
         # other way round? …anyway doing something unexpected might be even
         # more inconvienient than simply using the last selected:
-        if settings.get('vacc'): self._dvm.SelectVAcc(settings['vacc'])
-        if settings.get('mefi'): self._dvm.SelectMEFI(settings['vacc'], *settings['mefi'])
+        if settings.get('vacc'):
+            self._dvm.SelectVAcc(settings['vacc'])
+        if settings.get('mefi'):
+            self._dvm.SelectMEFI(settings['vacc'], *settings['mefi'])
 
     def disconnect(self):
         """Disconnect from online database."""
@@ -174,7 +176,8 @@ class OnlineBackend(_HitBackend):
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
         super.__init__(dvm, params, session.model, offsets, settings)
-        self.connected.changed.connect(partial(update_ns, session.user_ns, dvm))
+        self.connected.changed.connect(
+            partial(update_ns, session.user_ns, dvm))
 
 
 class TestBackend(_HitBackend):
@@ -186,8 +189,9 @@ class TestBackend(_HitBackend):
         proxy.set_window(session.window())
         params = load_dvm_parameters()
         super().__init__(proxy, params, session.model, offsets)
-        self.connected.changed.connect(partial(update_ns, session.user_ns, proxy))
         self.connected.changed.connect(proxy.on_connected_changed)
+        self.connected.changed.connect(
+            partial(update_ns, session.user_ns, proxy))
 
 
 ENERGY_PARAM = {

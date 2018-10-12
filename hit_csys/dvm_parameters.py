@@ -8,9 +8,7 @@ from madgui.online.api import ParamInfo
 from hit_csys.util import csv_unicode_reader
 
 
-#----------------------------------------
 # CSV column types
-#----------------------------------------
 
 def CsvStr(s):
     return s
@@ -47,10 +45,11 @@ def load_csv_data(rows):
 
 
 def _parse_csv_data(rows):
-    parse_row = lambda row: ParamInfo(**{
-        n: _csv_column_types[n](row[i].strip())
-        for n, i in _csv_column_index.items()
-    })
+    def parse_row(row):
+        return ParamInfo(**{
+            n: _csv_column_types[n](row[i].strip())
+            for n, i in _csv_column_index.items()
+        })
     cluster_name = ''
     cluster_items = []
     for row in rows:
@@ -68,12 +67,14 @@ def _parse_csv_data(rows):
     if cluster_items:
         yield (cluster_name, cluster_items)
 
+
 # all columns in csv file:
 _csv_column_names = [
     '',                 # Nr. für Link
     'name',             # Code Param (GSI-Nomenklatur)
     '',                 # Code Gerät (GSI- NomenkLatur) entspr. DCU!
-    '',                 # Code Gruppe (=Kalkulationsgruppe); möglichst GSI-NomenkLatur
+    '',                 # Code Gruppe (=Kalkulationsgruppe); möglichst
+                        #       GSI-NomenkLatur
     'ui_name',          # GUI Beschriftung Parameter (ohne Einheit)
     'ui_hint',          # GUI Beschriftung Hint
     '',                 # Position ExpertGrids
@@ -99,7 +100,8 @@ _csv_column_names = [
     '',                 # Link auf Minimalwert
     '',                 # Code Min/Max- Rechen-vorschrift
     '',                 # Master-gruppe
-    '',                 # Defaultwert Änderung pro Pfeiltasten-druck/Maus-radsegment in Einheit GUI
+    '',                 # Defaultwert Änderung pro Pfeiltasten-druck/
+                        #       Maus-radsegment in Einheit GUI
     '',                 # Im laufenden Betrieb änderbar (ja/ nein)
     '',                 # Link auf zugehörigen sekundären Wert
 ]

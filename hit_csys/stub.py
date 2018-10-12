@@ -43,7 +43,8 @@ class BImpostikDLL(object):
         self.params = dicti()
         self.sd_values = dicti()
         self.sd_cache = TimeoutCache(
-            self._get_jittered_sd, timeout=settings.get('jitter_interval', 1.0))
+            self._get_jittered_sd,
+            timeout=settings.get('jitter_interval', 1.0))
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.settings = settings
@@ -212,15 +213,15 @@ class BImpostikDLL(object):
     def update_params(self, model):
         self.params.clear()
         self.params.update(model.globals)
-        self.params.update(dict(
-            A_POSTSTRIP = 1.007281417537080e+00,
-            Q_POSTSTRIP = 1.000000000000000e+00,
-            Z_POSTSTRIP = 1.000000000000000e+00,
-            E_HEBT      = 2.034800000000000e+02,
+        self.params.update({
+            'A_POSTSTRIP':  1.007281417537080e+00,
+            'Q_POSTSTRIP':  1.000000000000000e+00,
+            'Z_POSTSTRIP':  1.000000000000000e+00,
+            'E_HEBT':       2.034800000000000e+02,
             # copying HEBT settings for testing:
-            E_SOURCE    = 2.034800000000000e+02,
-            E_MEBT      = 2.034800000000000e+02,
-        ))
+            'E_SOURCE':     2.034800000000000e+02,
+            'E_MEBT':       2.034800000000000e+02,
+        })
 
     @_api_meth
     def DisableMessageBoxes(self):

@@ -7,7 +7,7 @@ Python wrapper for 'BeamOptikDLL.dll'.
 # install or provide anything else (except for the actual DLL of course).
 
 from collections import namedtuple
-from ctypes import c_double as Double, c_int as Int
+from ctypes import c_double as Double, c_int as Int, POINTER as PTR
 import ctypes
 import logging
 import platform
@@ -16,18 +16,19 @@ import platform
 def _encode(s):
     return s if isinstance(s, bytes) else s.encode('utf-8')
 
+
 def _decode(s):
     return s.decode('utf-8') if isinstance(s, bytes) else s
 
 
 if platform.architecture()[0] == '64bit':
-    _Str = ctypes.c_wchar_p         # constructor wants unicode
     def Str(s):
         return _Str(_decode(s))
+    _Str = ctypes.c_wchar_p         # constructor wants unicode
 else:
-    _Str = ctypes.c_char_p          # constructor wants bytes
     def Str(s):
         return _Str(_encode(s))
+    _Str = ctypes.c_char_p          # constructor wants bytes
 
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
@@ -88,9 +89,7 @@ class BeamOptikDLL(object):
     else:
         filename = 'BeamOptikDLL.dll'
 
-    #----------------------------------------
     # internal methods
-    #----------------------------------------
 
     error_messages = [
         None,
@@ -135,16 +134,12 @@ class BeamOptikDLL(object):
             params.insert(6, done)
         else:
             params.append(done)
-        def param(p):
-            return p if isinstance(p, _Str) else ctypes.byref(p)
         func = getattr(self.lib, function)
-        args = tuple(map(param, params))
+        args = [p if isinstance(p, _Str) else ctypes.byref(p) for p in params]
         func(*args)
         self.check_return(done.value)
 
-    #----------------------------------------
     # things that don't require IID to be set:
-    #----------------------------------------
 
     @classmethod
     def load_library(cls, filename=filename, variant='HIT'):
@@ -198,9 +193,7 @@ class BeamOptikDLL(object):
         """Shared library proxy."""
         return self._lib
 
-    #----------------------------------------
     # object API
-    #----------------------------------------
 
     def __init__(self, lib, variant='HIT'):
         """
@@ -221,7 +214,9 @@ class BeamOptikDLL(object):
     def iid(self):
         """Interface instance ID."""
         if self._iid is None:
-            raise RuntimeError("GetInterfaceInstance must be called before using other methods.")
+            raise RuntimeError(
+                "GetInterfaceInstance must be called "
+                "before using other methods.")
         return self._iid
 
     def __bool__(self):
@@ -325,7 +320,8 @@ class BeamOptikDLL(object):
 
         Changes take effect after calling :func:`ExecuteChanges`.
         """
-        self._call('SetFloatValue', self.iid, Str(name), Double(value), Int(options))
+        self._call('SetFloatValue', self.iid,
+                   Str(name), Double(value), Int(options))
 
     def ExecuteChanges(self, options=ExecOptions.CalcDif):
         """
@@ -344,7 +340,6 @@ class BeamOptikDLL(object):
         :param callback: ``callable(name:str, val:float, type:int)``
         :raises RuntimeError: if the exit code indicates any error
         """
-        PTR = ctypes.POINTER
         @ctypes.WINFUNCTYPE(None, PTR(_Str), PTR(Double), PTR(Int))
         def c_callback(name, value, type_):
             return callback(_decode(name.value),
@@ -395,10 +390,11 @@ class BeamOptikDLL(object):
                    order_num)
         sel_efi = self._selected_efi
         if (vaccnum != self._selected_vacc or
-            energy != sel_efi.energy or
-            focus != sel_efi.focus or
-            intensity != sel_efi.intensity):
-            logging.warn("You must call SelectEFI() before StartRampDataGeneration()!")
+                energy != sel_efi.energy or
+                focus != sel_efi.focus or
+                intensity != sel_efi.intensity):
+            logging.warn(
+                "You must call SelectEFI() before StartRampDataGeneration()!")
         return order_num.value
 
     def GetRampDataValue(self, order_num, event_num, delay,
@@ -415,7 +411,7 @@ class BeamOptikDLL(object):
 
     def SetIPC_DVM_ID(self, name):
         """Call SetIPC_DVM_ID(). Not implemented!"""
-        raise NotImplementedError() # TODO
+        raise NotImplementedError()     # TODO
 
     def GetMEFIValue(self):
         """
