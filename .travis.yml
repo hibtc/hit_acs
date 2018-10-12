@@ -7,12 +7,6 @@ python:
   - "3.5"
   - "3.6"
 
-matrix:
-  include:
-    - python: "3.7"
-      dist: xenial
-      sudo: true
-
 install:
   - python setup.py develop
   - pip install flake8 docutils pygments
@@ -20,3 +14,44 @@ install:
 script:
   - python setup.py check -rs
   - flake8
+
+jobs:
+  include:
+    - python: "3.7"
+      dist: xenial
+      sudo: true
+
+    - stage: deploy
+      name: Upload release to Test PyPI
+      python: "3.6"
+      if: branch = test-release
+      install: skip
+      script:
+        - sed -i "/^__version__ = /s/'$/.dev$TRAVIS_BUILD_NUMBER'/"
+            hit_csys/__init__.py
+        - python setup.py sdist
+      deploy:
+      - provider: pypi
+        skip_cleanup: true
+        server: https://test.pypi.org/legacy/
+        on:
+          branch: test-release
+        user: hibtc-deploy
+        password:
+          secure: "opPEkzlANf6uht7WmgQtHDQZJUlrYw9q1YcmWC+KkJ2EnytG9hwqYjcT4l4GUA9AmgZPCX7ExNUc/lyE1FLr7pjRutJeWPKpf9vlYq1XtlXKQRjPc2hAr4i4OTdDDGTdOz6MkRCSoDjn7cif4/iMU5CB2VO5A4mKY6DIbp6nTjcAw5ugCZVQgFBkYl45Mrw2ocwzILPd2uFKk8UgtziXYUgIy3mx9EgbDJ4ehnSQZ4yEl4L5Bq+5scfNxasJm4v9PfLIcX1o9evmwzcOT3gX+JaHgJMWvzfbzo6+W3RQA5+34lwl88Q5+mhJ6GWVd0jcvulMGJUaYp66rHleuXs2MdLnm7EzoNRp4GQEEgdI4wba8IjVSQJYbwAwxP5xr9gLFUXlLiUTuepCCsu5NHLE6eNwFJ3+u7pHGZxksgUCitVu00hdsHxh8SxSqPVWveIuY4kRQiB7gTi8vAcW1Aps1LAO1ss7E6lEpUJ8kC+boV6o3leDwq+yKSPYckR6wxAnCveH2V3C9qDLUHQyRz1sPfi9Nv8Lzmod2KXqQ3HTvwGILupMQibCt9uXYygquqzzhuyju8cELOy6v5+g+LDD8lrYyZ1I/R6lOf0B4Lx2v+VnlBmK6ul39TPqn09jbVMYHpUO6FCD+bwp8GneYmbKaLP6jtUrtqrsa36poj2cYpQ="
+
+    - stage: deploy
+      name: Upload release to PyPI
+      python: "3.6"
+      if: tag IS present
+      install: skip
+      script:
+        - python setup.py sdist
+      deploy:
+      - provider: pypi
+        skip_cleanup: true
+        on:
+          tags: true
+        user: hibtc-deploy
+        password:
+          secure: "j4KfSA8J8QrRR1iRb1KS/OzdJl/BUIGNn7p+eEAH/s+OG5qd+w/qb0kq4MjgKw/bkAjn/PGyq4o0079Gh2oftLkPSYoOn2p9HJZYtLVq64d627Xw1EvkYcj/3jzsM/cOJZQ/Hv8T7+tlLGjxm6vqT8TBODwcj9o15UuP9idoYmm+kl0rWICjI9V6k9+8D07RVGxxK5ly5LvzgJkpDAfg/RHA1pt3jVFtsVMnTOCfMTte72o1tq4VjEPYAgyrYJPHf3tsXEFIrEsMOB9WOkgwhaj0Bk+LwLlxTZF1YoI7WlBxTFympF1f/kZv5622o0v6/DkMib5+icL7eE9cZvFGfSiEStFVhipFZXRiSdL08eNHJTsJWFHKxJ77d5yMtZUgjkWDjpeyoqxS/TqFYntMJN1SJddZ4l2LIjBnyVjTyHLcTzEaozON9L4clGz+BjCAaOF8eDjTUare36nfDE9+nHN+gTVhfMU7/ufxxFxFeXRQceptuuRSzVZJ4xmBPhjI4DWNhFcJZUBGhig+F9q8+fFRWgp3kvlKWfpzN+la3iCHBXhxmAl6Sf6eXgHTaFKBTSgHenlCTU5/woR6x9398KDdDZvMha0GkcYAO5Ql5N0KGHDqa4CrUlxvo1jkmV5g0xPewuVHjnKSFB3ySQeyH0lmmOGzIvgvZ6JD1DEOwDE="
