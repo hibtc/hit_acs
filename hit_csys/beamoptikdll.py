@@ -134,6 +134,7 @@ class BeamOptikDLL(object):
             params.insert(6, done)
         else:
             params.append(done)
+        logging.debug('{}{}'.format(function, tuple(params)))
         func = getattr(self.lib, function)
         args = [p if isinstance(p, _Str) else ctypes.byref(p) for p in params]
         func(*args)
