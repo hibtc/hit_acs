@@ -44,7 +44,7 @@ class BImpostikDLL(object):
         self.sd_values = dicti()
         self.sd_cache = TimeoutCache(
             self._get_jittered_sd,
-            timeout=settings.get('jitter_interval', 1.0))
+            timeout=settings.get('shot_interval', 1.0))
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.settings = settings
@@ -123,7 +123,7 @@ class BImpostikDLL(object):
     def export_settings(self):
         return {
             'jitter': self.jitter(),
-            'jitter_interval': self.sd_cache.timeout,
+            'shot_interval': self.sd_cache.timeout,
             'auto_sd': self.auto_sd(),
             'auto_params': self.auto_params(),
             'str_file': safe_relpath(self.str_file),
