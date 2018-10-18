@@ -1,6 +1,35 @@
 CHANGELOG
 ~~~~~~~~~
 
+18.10.0
+-------
+
+Now in calver_ (calendaric versioning) ``YY.MM.patch`` since this better fits
+the nature of madgui development and is I believe more useful for end-users.
+
+.. _calver: https://calver.org/
+
+- fix TypeError during MEFI initialization
+- jitter SD values on retrieval, periodically (like shots)
+- use gaussian jitter for monitor readouts
+- take care of settings menu [madgui >= 2018.10.18]
+- aberrate magnet strengths only explicitly
+- add menu options for internal settings
+- add menuitems for loading readouts/strengths
+- load/save more stub settings
+- aberrate only ax/kL values, gaussian distribution
+- disturb beam *widths* using gamma distribution
+- adapt to updated madgui module qualnames in madgui 2018.10.18
+- adapt to changes in new madgui Plugin API (-> Backend)
+- getting passed Session object instead of mainwindow now
+- safeguard against invalid paths - fixes ValueError on exit
+- fix the test backend when no window is present
+- add automatic sanity checks (missing imports, syntax errors, etc)
+- add automatic style checks and fix several style issues
+- automatically upload releases to PyPI
+- add debug trace log for the real online dll
+
+
 0.13.0
 ------
 Date: 24.07.2018
