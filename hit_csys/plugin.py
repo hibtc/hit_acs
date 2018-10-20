@@ -175,7 +175,7 @@ class OnlineBackend(_HitBackend):
             variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
-        super.__init__(dvm, params, session.model, offsets, settings)
+        super().__init__(dvm, params, session.model, offsets, settings)
         self.connected.changed.connect(
             partial(update_ns, session.user_ns, dvm))
 
