@@ -341,7 +341,7 @@ class BeamOptikDLL(object):
         :param callback: ``callable(name:str, val:float, type:int)``
         :raises RuntimeError: if the exit code indicates any error
         """
-        @ctypes.WINFUNCTYPE(None, PTR(_Str), PTR(Double), PTR(Int))
+        @ctypes.WINFUNCTYPE(None, _Str, PTR(Double), PTR(Int))
         def c_callback(name, value, type_):
             return callback(_decode(name.value),
                             value.contents.value,
