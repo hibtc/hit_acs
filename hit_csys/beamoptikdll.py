@@ -7,7 +7,7 @@ Python wrapper for 'BeamOptikDLL.dll'.
 # install or provide anything else (except for the actual DLL of course).
 
 from collections import namedtuple
-from ctypes import c_double as Double, c_int as Int, POINTER as PTR
+from ctypes import c_double as Double, c_int as Int, POINTER, byref
 import ctypes
 import logging
 import platform
@@ -29,6 +29,13 @@ else:
     def Str(s):
         return _Str(_encode(s))
     _Str = ctypes.c_char_p          # constructor wants bytes
+
+
+try:
+    NewValueCallback = ctypes.WINFUNCTYPE(
+        None, _Str, POINTER(Double), POINTER(Int))
+except AttributeError:
+    NewValueCallback = None
 
 
 EFI = namedtuple('EFI', ['energy', 'focus', 'intensity', 'gantry_angle'])
@@ -136,7 +143,10 @@ class BeamOptikDLL(object):
             params.append(done)
         logging.debug('{}{}'.format(function, tuple(params)))
         func = getattr(self.lib, function)
-        args = [p if isinstance(p, _Str) else ctypes.byref(p) for p in params]
+        args = [
+            p if isinstance(p, (_Str, NewValueCallback)) else byref(p)
+            for p in params
+        ]
         func(*args)
         self.check_return(done.value)
 
@@ -341,7 +351,7 @@ class BeamOptikDLL(object):
         :param callback: ``callable(name:str, val:float, type:int)``
         :raises RuntimeError: if the exit code indicates any error
         """
-        @ctypes.WINFUNCTYPE(None, _Str, PTR(Double), PTR(Int))
+        @NewValueCallback
         def c_callback(name, value, type_):
             return callback(_decode(name.value),
                             value.contents.value,
