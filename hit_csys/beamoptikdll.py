@@ -351,14 +351,13 @@ class BeamOptikDLL(object):
         :param callback: ``callable(name:str, val:float, type:int)``
         :raises RuntimeError: if the exit code indicates any error
         """
-        @NewValueCallback
         def c_callback(name, value, type_):
             return callback(_decode(name.value),
                             value.contents.value,
                             type_.contents.value)
         # store a reference to keep the callback object alive:
-        self._callback = c_callback
-        self._call('SetNewValueCallback', self.iid, c_callback)
+        self._c_cb = NewValueCallback(0 if callback is None else c_callback)
+        self._call('SetNewValueCallback', self.iid, self._c_cb)
 
     def GetFloatValueSD(self, name, options=GetSDOptions.Current):
         """
