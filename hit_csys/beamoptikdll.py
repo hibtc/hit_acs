@@ -346,6 +346,8 @@ class BeamOptikDLL(object):
             return callback(_decode(name.value),
                             value.contents.value,
                             type_.contents.value)
+        # store a reference to keep the callback object alive:
+        self._callback = c_callback
         self._call('SetNewValueCallback', self.iid, c_callback)
 
     def GetFloatValueSD(self, name, options=GetSDOptions.Current):
