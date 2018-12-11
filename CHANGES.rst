@@ -1,6 +1,17 @@
 CHANGELOG
 ~~~~~~~~~
 
+18.12.0
+-------
+
+- fix exception in ``OnlineBackend.__init__`` due to missing parenthesis
+- keep a reference to the ctypes callback for ``SetNewValueCallback``, to
+  prevent garbage collection
+- fix incorrect parameter type (pointer to pointer) for
+  ``SetNewValueCallback``
+- allow removing the callback by passing None
+
+
 18.10.0
 -------
 
