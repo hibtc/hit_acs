@@ -352,7 +352,7 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
         """
         def c_callback(name, value, type_):
-            return callback(_decode(name.value),
+            return callback(_decode(name),
                             value.contents.value,
                             type_.contents.value)
         # store a reference to keep the callback object alive:
