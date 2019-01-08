@@ -33,7 +33,7 @@ else:
 
 try:
     NewValueCallback = ctypes.WINFUNCTYPE(
-        None, _Str, POINTER(Double), POINTER(Int))
+        None, ctypes.c_char_p, POINTER(Double), POINTER(Int))
 except AttributeError:
     NewValueCallback = None
 
