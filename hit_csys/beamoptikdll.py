@@ -7,7 +7,7 @@ Python wrapper for 'BeamOptikDLL.dll'.
 # install or provide anything else (except for the actual DLL of course).
 
 from collections import namedtuple
-from ctypes import c_double as Double, c_int as Int, POINTER, byref
+from ctypes import c_double as Double, c_int as Int, POINTER
 import ctypes
 import logging
 import platform
@@ -143,11 +143,7 @@ class BeamOptikDLL(object):
             params.append(done)
         logging.debug('{}{}'.format(function, tuple(params)))
         func = self._funcs[function]
-        args = [
-            p if isinstance(p, (_Str, NewValueCallback)) else byref(p)
-            for p in params
-        ]
-        func(*args)
+        func(*params)
         self.check_return(done.value)
 
     # things that don't require IID to be set:
