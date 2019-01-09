@@ -7,7 +7,7 @@ Python wrapper for 'BeamOptikDLL.dll'.
 # install or provide anything else (except for the actual DLL of course).
 
 from collections import namedtuple
-from ctypes import c_double as Double, c_int as Int, POINTER, byref
+from ctypes import c_double as Double, c_int as Int, POINTER
 import ctypes
 import logging
 import platform
@@ -142,12 +142,8 @@ class BeamOptikDLL(object):
         else:
             params.append(done)
         logging.debug('{}{}'.format(function, tuple(params)))
-        func = getattr(self.lib, function)
-        args = [
-            p if isinstance(p, (_Str, NewValueCallback)) else byref(p)
-            for p in params
-        ]
-        func(*args)
+        func = self._funcs[function]
+        func(*params)
         self.check_return(done.value)
 
     # things that don't require IID to be set:
@@ -215,6 +211,7 @@ class BeamOptikDLL(object):
 
         :param lib: shared library proxy object
         """
+        self._funcs = _load_functions(lib)
         self._lib = lib
         self._iid = None
         self._selected_vacc = None
@@ -443,3 +440,42 @@ class BeamOptikDLL(object):
             values = [Double(), Double(), Double(), Double()]
             self._call('GetMEFIValue_RKA', self.iid, *values)
             return (EFI(*[v.value for v in values]), None)
+
+
+def _load_functions(lib):
+    """Load the function pointers for all exported functions and
+    initialize their argtypes. Return as dict ``{name: function}``."""
+    i = POINTER(Int)
+    d = POINTER(Double)
+    s = _Str
+    return _declare(lib, {
+        'GetInterfaceInstance':     [i, i],
+        'FreeInterfaceInstance':    [i, i],
+        'DisableMessageBoxes':      [i],
+        'GetDVMStatus':             [i, i, i],
+        'SelectVAcc':               [i, i, i],
+        'SelectMEFI':               [i, i, i, i, i, i, i, d, d, d, d],
+        'SelectMEFI_RKA':           [i, i, i, i, i, i, i, d, d, d, d],
+        'SelectMEFI_EXT':           [i, i, i, i, i, i, i, i, d, d, d, d],
+        'SelectMEFI_EXT_RKA':       [i, i, i, i, i, i, i, i, d, d, d, d],
+        'GetSelectedVAcc':          [i, i, i],
+        'GetFloatValue':            [i, s, d, i, i],
+        'SetFloatValue':            [i, s, d, i, i],
+        'ExecuteChanges':           [i, i, i],
+        'SetNewValueCallback':      [i, NewValueCallback, i],
+        'GetFloatValueSD':          [i, s, d, i, i],
+        'GetLastFloatValueSD':      [i, s, d, i, i, i, i, i, i, i],
+        'GetLastFloatValueSD_RKA':  [i, s, d, i, i, i, i, i, i, i],
+        'StartRampDataGeneration':  [i, i, i, i, i, i, i],
+        'GetRampDataValue':         [i, i, i, i, s, s, d, i],
+        'SetIPC_DVM_ID':            [i, i, i, i],
+        'GetMEFIValue':             [i, d, d, d, d, i, i, i, i, i],
+        'GetMEFIValue_RKA':         [i, d, d, d, d, i],
+    })
+
+
+def _declare(lib, argtypes):
+    funcs = {method: lib[method] for method in argtypes}
+    for method, types in argtypes.items():
+        funcs[method].argtypes = types
+    return funcs
