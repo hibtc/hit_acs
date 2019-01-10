@@ -35,13 +35,6 @@ def load_dvm_parameters():
     return dicti({p['name']: p for p in parlist})
 
 
-def _get_sd_value(dvm, el_name, param_name):
-    """Return a single SD value (with unit)."""
-    sd_name = param_name + '_' + el_name
-    plain_value = dvm.GetFloatValueSD(sd_name.upper())
-    return plain_value / 1000       # mm to m
-
-
 class _HitBackend(api.Backend):
 
     def __init__(self, dvm, params, model=None, offsets=None, settings=None):
@@ -117,8 +110,9 @@ class _HitBackend(api.Backend):
         values = {}
         for src, dst in zip(keys_backend, keys_internal):
             # TODO: Handle usability of parameters individually
+            value_name = src + '_' + name
             try:
-                val = _get_sd_value(self._dvm, name, src)
+                val = self._dvm.GetFloatValueSD(value_name.upper())
             except RuntimeError:
                 return {}
             # TODO: move sanity check to later, so values will simply be
@@ -127,7 +121,7 @@ class _HitBackend(api.Backend):
             # FIXME: Sometimes width=0 is returned. ~ Meaning?
             if val == -9999 or src.startswith('width') and val <= 0:
                 return {}
-            values[dst] = val
+            values[dst] = val / 1000        # mm to m
         xoffs, yoffs = self._offsets.get(name, (0, 0))
         values['posx'] += xoffs
         values['posy'] += yoffs
