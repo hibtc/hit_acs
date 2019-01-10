@@ -56,8 +56,8 @@ class _HitBackend(api.Backend):
                 ui_name='gantry_angle',
                 ui_hint='',
                 ui_prec=3,
-                unit=1*unit.units.degree,
-                ui_unit=1*unit.units.degree,
+                unit='°',
+                ui_unit='°',
                 ui_conv=1),
         })
         self._model = model
