@@ -8,9 +8,9 @@ from __future__ import absolute_import
 import logging
 from functools import partial
 try:
-    from importlib_resources import open_binary as resource_stream
+    from importlib_resources import read_binary
 except ImportError:
-    from pkg_resources import resource_stream
+    from pkg_resources import resource_string as read_binary
 
 from pydicti import dicti
 
@@ -30,12 +30,9 @@ def update_ns(ns, dll, connected):
 
 
 def load_dvm_parameters():
-    with resource_stream('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv') as f:
-        parlist = load_csv(f, 'utf-8')
-    return dicti(
-        (p.name, p)
-        for el_name, params in parlist
-        for p in params)
+    blob = read_binary('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv')
+    parlist = load_csv(blob.splitlines(), 'utf-8')
+    return dicti({p['name']: p for p in parlist})
 
 
 def _get_sd_value(dvm, el_name, param_name):
@@ -51,13 +48,13 @@ class _HitBackend(api.Backend):
         self._dvm = dvm
         self._params = params
         self._params.update({
-            'gantry_angle': api.ParamInfo(
+            'gantry_angle': dict(
                 name='gantry_angle',
                 ui_name='gantry_angle',
                 ui_hint='',
                 ui_prec=3,
-                unit=1*unit.units.degree,
-                ui_unit=1*unit.units.degree,
+                unit='°',
+                ui_unit='°',
                 ui_conv=1),
         })
         self._model = model
@@ -103,7 +100,8 @@ class _HitBackend(api.Backend):
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
-        return self._params.get(knob.lower())
+        data = self._params.get(knob.lower())
+        return data and api.ParamInfo(**data)
 
     def read_monitor(self, name):
         """

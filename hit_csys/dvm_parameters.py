@@ -3,8 +3,6 @@
 Tools to work with DVM paramater list.
 """
 
-import madgui.util.unit as unit
-from madgui.online.api import ParamInfo
 from hit_csys.util import csv_unicode_reader
 
 
@@ -23,12 +21,10 @@ def CsvFloat(s):
 
 
 def CsvUnit(s):
-    if s == '%':
-        return 0.01
     s = s.replace(u'grad', u'degree')
     s = s.replace(u'Ohm', u'ohm')
     s = s.replace(u'part.', u'count')   # used for particle count
-    return unit.from_config(s)
+    return s
 
 
 def load_csv(lines, encoding='utf-8', delimiter=';'):
@@ -41,31 +37,12 @@ def load_csv(lines, encoding='utf-8', delimiter=';'):
 
 
 def load_csv_data(rows):
-    return _parse_csv_data(rows)
-
-
-def _parse_csv_data(rows):
     def parse_row(row):
-        return ParamInfo(**{
+        return {
             n: _csv_column_types[n](row[i].strip())
             for n, i in _csv_column_index.items()
-        })
-    cluster_name = ''
-    cluster_items = []
-    for row in rows:
-        item = parse_row(row)
-        # detect cluster header lines:
-        link = row[0]
-        if link and not link.isdigit() and not item.name:
-            # yield previous element/context
-            if cluster_items:
-                yield (cluster_name, cluster_items)
-            cluster_name = link
-            cluster_items = []
-        elif item.name:
-            cluster_items.append(item)
-    if cluster_items:
-        yield (cluster_name, cluster_items)
+        }
+    return map(parse_row, rows)
 
 
 # all columns in csv file:
