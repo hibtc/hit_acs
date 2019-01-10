@@ -6,7 +6,6 @@ Madgui online control plugin.
 from __future__ import absolute_import
 
 import logging
-from functools import partial
 try:
     from importlib_resources import read_binary
 except ImportError:
@@ -25,21 +24,23 @@ from .dvm_parameters import load_csv
 from .offsets import find_offsets
 
 
-def update_ns(ns, dll, connected):
-    ns.dll = dll if connected else None
+ENERGY_PARAM = {
+    'lebt': 'E_SOURCE',
+    'mebt': 'E_MEBT',
+}
+
+PERIODIC_TABLE = {
+    1: 'p',
+    2: 'He',
+    6: 'C',
+    8: 'O',
+}
 
 
 def load_dvm_parameters():
     blob = read_binary('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv')
     parlist = load_csv(blob.splitlines(), 'utf-8')
     return dicti({p['name']: p for p in parlist})
-
-
-def _get_sd_value(dvm, el_name, param_name):
-    """Return a single SD value (with unit)."""
-    sd_name = param_name + '_' + el_name
-    plain_value = dvm.GetFloatValueSD(sd_name.upper())
-    return plain_value / 1000       # mm to m
 
 
 class _HitBackend(api.Backend):
@@ -105,34 +106,31 @@ class _HitBackend(api.Backend):
 
     def read_monitor(self, name):
         """
-        Read out one monitor, return values as dict with keys:
-
-            widthx:     Beam x width
-            widthy:     Beam y width
-            posx:       Beam x position
-            posy:       Beam y position
+        Read out one monitor, return values as dict with keys
+        posx/posy/envx/envy.
         """
-        keys_backend = ('posx', 'posy', 'widthx', 'widthy')
-        keys_internal = ('posx', 'posy', 'envx', 'envy')
-        values = {}
-        for src, dst in zip(keys_backend, keys_internal):
-            # TODO: Handle usability of parameters individually
-            try:
-                val = _get_sd_value(self._dvm, name, src)
-            except RuntimeError:
-                return {}
-            # TODO: move sanity check to later, so values will simply be
-            # unchecked/grayed out, instead of removed completely
-            # The magic number -9999.0 signals corrupt values.
-            # FIXME: Sometimes width=0 is returned. ~ Meaning?
-            if val == -9999 or src.startswith('width') and val <= 0:
-                return {}
-            values[dst] = val
+        # TODO: Handle usability of parameters individually
+        try:
+            GetFloatValueSD = self._dvm.GetFloatValueSD
+            posx = GetFloatValueSD(('posx_' + name).upper())
+            posy = GetFloatValueSD(('posy_' + name).upper())
+            envx = GetFloatValueSD(('widthx_' + name).upper())
+            envy = GetFloatValueSD(('widthy_' + name).upper())
+        except RuntimeError:
+            return {}
+        # TODO: move sanity check to later, so values will simply be
+        # unchecked/grayed out, instead of removed completely
+        # The magic number -9999.0 signals corrupt values.
+        # FIXME: Sometimes width=0 is returned. ~ Meaning?
+        if posx == -9999 or posy == -9999 or envx <= 0 or envy <= 0:
+            return {}
         xoffs, yoffs = self._offsets.get(name, (0, 0))
-        values['posx'] += xoffs
-        values['posy'] += yoffs
-        values['posx'] = -values['posx']
-        return values
+        return {
+            'posx': -(posx / 1000 + xoffs),
+            'posy': +(posy / 1000 + yoffs),
+            'envx': envx / 1000,
+            'envy': envy / 1000,
+        }
 
     def read_param(self, param):
         """Read parameter. Return numeric value."""
@@ -169,13 +167,11 @@ class OnlineBackend(_HitBackend):
 
     def __init__(self, session, settings):
         """Connect to online database."""
-        dvm = BeamOptikDLL.load_library(
+        session.user_ns.dll = dvm = BeamOptikDLL.load_library(
             variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
         super().__init__(dvm, params, session.model, offsets, settings)
-        self.connected.changed.connect(
-            partial(update_ns, session.user_ns, dvm))
 
 
 class TestBackend(_HitBackend):
@@ -183,23 +179,9 @@ class TestBackend(_HitBackend):
     def __init__(self, session, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         model = session.model
-        proxy = BImpostikDLL(model, offsets, settings)
+        session.user_ns.dll = proxy = BImpostikDLL(model, offsets, settings)
         proxy.set_window(session.window())
         params = load_dvm_parameters()
+        session.user_ns.dll = proxy
         super().__init__(proxy, params, session.model, offsets)
         self.connected.changed.connect(proxy.on_connected_changed)
-        self.connected.changed.connect(
-            partial(update_ns, session.user_ns, proxy))
-
-
-ENERGY_PARAM = {
-    'lebt': 'E_SOURCE',
-    'mebt': 'E_MEBT',
-}
-
-PERIODIC_TABLE = {
-    1: 'p',
-    2: 'He',
-    6: 'C',
-    8: 'O',
-}
