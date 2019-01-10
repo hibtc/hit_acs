@@ -47,22 +47,7 @@ def _parse_csv_data(rows):
             n: _csv_column_types[n](row[i].strip())
             for n, i in _csv_column_index.items()
         })
-    cluster_name = ''
-    cluster_items = []
-    for row in rows:
-        item = parse_row(row)
-        # detect cluster header lines:
-        link = row[0]
-        if link and not link.isdigit() and not item.name:
-            # yield previous element/context
-            if cluster_items:
-                yield (cluster_name, cluster_items)
-            cluster_name = link
-            cluster_items = []
-        elif item.name:
-            cluster_items.append(item)
-    if cluster_items:
-        yield (cluster_name, cluster_items)
+    return map(parse_row, rows)
 
 
 # all columns in csv file:

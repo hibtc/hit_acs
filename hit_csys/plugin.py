@@ -32,10 +32,7 @@ def update_ns(ns, dll, connected):
 def load_dvm_parameters():
     blob = read_binary('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv')
     parlist = load_csv(blob.splitlines(), 'utf-8')
-    return dicti(
-        (p.name, p)
-        for el_name, params in parlist
-        for p in params)
+    return dicti((p.name, p) for p in parlist)
 
 
 def _get_sd_value(dvm, el_name, param_name):
