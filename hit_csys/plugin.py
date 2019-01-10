@@ -6,7 +6,6 @@ Madgui online control plugin.
 from __future__ import absolute_import
 
 import logging
-from functools import partial
 try:
     from importlib_resources import read_binary
 except ImportError:
@@ -168,13 +167,11 @@ class OnlineBackend(_HitBackend):
 
     def __init__(self, session, settings):
         """Connect to online database."""
-        dvm = BeamOptikDLL.load_library(
+        session.user_ns.dll = dvm = BeamOptikDLL.load_library(
             variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
         super().__init__(dvm, params, session.model, offsets, settings)
-        self.connected.changed.connect(
-            partial(update_ns, session.user_ns, dvm))
 
 
 class TestBackend(_HitBackend):
@@ -182,14 +179,9 @@ class TestBackend(_HitBackend):
     def __init__(self, session, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         model = session.model
-        proxy = BImpostikDLL(model, offsets, settings)
+        session.user_ns.dll = proxy = BImpostikDLL(model, offsets, settings)
         proxy.set_window(session.window())
         params = load_dvm_parameters()
+        session.user_ns.dll = proxy
         super().__init__(proxy, params, session.model, offsets)
         self.connected.changed.connect(proxy.on_connected_changed)
-        self.connected.changed.connect(
-            partial(update_ns, session.user_ns, proxy))
-
-
-def update_ns(ns, dll, connected):
-    ns.dll = dll if connected else None
