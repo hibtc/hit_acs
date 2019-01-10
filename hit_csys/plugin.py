@@ -8,9 +8,9 @@ from __future__ import absolute_import
 import logging
 from functools import partial
 try:
-    from importlib_resources import open_binary as resource_stream
+    from importlib_resources import read_binary
 except ImportError:
-    from pkg_resources import resource_stream
+    from pkg_resources import resource_string as read_binary
 
 from pydicti import dicti
 
@@ -30,8 +30,8 @@ def update_ns(ns, dll, connected):
 
 
 def load_dvm_parameters():
-    with resource_stream('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv') as f:
-        parlist = load_csv(f, 'utf-8')
+    blob = read_binary('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv')
+    parlist = load_csv(blob.splitlines(), 'utf-8')
     return dicti(
         (p.name, p)
         for el_name, params in parlist
