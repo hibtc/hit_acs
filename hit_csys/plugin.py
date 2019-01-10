@@ -32,7 +32,7 @@ def update_ns(ns, dll, connected):
 def load_dvm_parameters():
     blob = read_binary('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv')
     parlist = load_csv(blob.splitlines(), 'utf-8')
-    return dicti((p.name, p) for p in parlist)
+    return dicti({p['name']: p for p in parlist})
 
 
 def _get_sd_value(dvm, el_name, param_name):
@@ -48,7 +48,7 @@ class _HitBackend(api.Backend):
         self._dvm = dvm
         self._params = params
         self._params.update({
-            'gantry_angle': api.ParamInfo(
+            'gantry_angle': dict(
                 name='gantry_angle',
                 ui_name='gantry_angle',
                 ui_hint='',
@@ -100,7 +100,8 @@ class _HitBackend(api.Backend):
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
-        return self._params.get(knob.lower())
+        data = self._params.get(knob.lower())
+        return data and api.ParamInfo(**data)
 
     def read_monitor(self, name):
         """

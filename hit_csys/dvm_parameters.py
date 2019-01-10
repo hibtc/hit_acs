@@ -3,7 +3,6 @@
 Tools to work with DVM paramater list.
 """
 
-from madgui.online.api import ParamInfo
 from hit_csys.util import csv_unicode_reader
 
 
@@ -38,15 +37,11 @@ def load_csv(lines, encoding='utf-8', delimiter=';'):
 
 
 def load_csv_data(rows):
-    return _parse_csv_data(rows)
-
-
-def _parse_csv_data(rows):
     def parse_row(row):
-        return ParamInfo(**{
+        return {
             n: _csv_column_types[n](row[i].strip())
             for n, i in _csv_column_index.items()
-        })
+        }
     return map(parse_row, rows)
 
 
