@@ -25,8 +25,17 @@ from .dvm_parameters import load_csv
 from .offsets import find_offsets
 
 
-def update_ns(ns, dll, connected):
-    ns.dll = dll if connected else None
+ENERGY_PARAM = {
+    'lebt': 'E_SOURCE',
+    'mebt': 'E_MEBT',
+}
+
+PERIODIC_TABLE = {
+    1: 'p',
+    2: 'He',
+    6: 'C',
+    8: 'O',
+}
 
 
 def load_dvm_parameters():
@@ -182,14 +191,5 @@ class TestBackend(_HitBackend):
             partial(update_ns, session.user_ns, proxy))
 
 
-ENERGY_PARAM = {
-    'lebt': 'E_SOURCE',
-    'mebt': 'E_MEBT',
-}
-
-PERIODIC_TABLE = {
-    1: 'p',
-    2: 'He',
-    6: 'C',
-    8: 'O',
-}
+def update_ns(ns, dll, connected):
+    ns.dll = dll if connected else None
