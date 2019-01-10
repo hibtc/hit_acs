@@ -3,7 +3,6 @@
 Tools to work with DVM paramater list.
 """
 
-import madgui.util.unit as unit
 from madgui.online.api import ParamInfo
 from hit_csys.util import csv_unicode_reader
 
@@ -23,12 +22,10 @@ def CsvFloat(s):
 
 
 def CsvUnit(s):
-    if s == '%':
-        return 0.01
     s = s.replace(u'grad', u'degree')
     s = s.replace(u'Ohm', u'ohm')
     s = s.replace(u'part.', u'count')   # used for particle count
-    return unit.from_config(s)
+    return s
 
 
 def load_csv(lines, encoding='utf-8', delimiter=';'):
