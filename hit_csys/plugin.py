@@ -98,35 +98,31 @@ class _HitBackend(api.Backend):
 
     def read_monitor(self, name):
         """
-        Read out one monitor, return values as dict with keys:
-
-            widthx:     Beam x width
-            widthy:     Beam y width
-            posx:       Beam x position
-            posy:       Beam y position
+        Read out one monitor, return values as dict with keys
+        posx/posy/envx/envy.
         """
-        keys_backend = ('posx', 'posy', 'widthx', 'widthy')
-        keys_internal = ('posx', 'posy', 'envx', 'envy')
-        values = {}
-        for src, dst in zip(keys_backend, keys_internal):
-            # TODO: Handle usability of parameters individually
-            value_name = src + '_' + name
-            try:
-                val = self._dvm.GetFloatValueSD(value_name.upper())
-            except RuntimeError:
-                return {}
-            # TODO: move sanity check to later, so values will simply be
-            # unchecked/grayed out, instead of removed completely
-            # The magic number -9999.0 signals corrupt values.
-            # FIXME: Sometimes width=0 is returned. ~ Meaning?
-            if val == -9999 or src.startswith('width') and val <= 0:
-                return {}
-            values[dst] = val / 1000        # mm to m
+        # TODO: Handle usability of parameters individually
+        try:
+            GetFloatValueSD = self._dvm.GetFloatValueSD
+            posx = GetFloatValueSD(('posx_' + name).upper())
+            posy = GetFloatValueSD(('posy_' + name).upper())
+            envx = GetFloatValueSD(('widthx_' + name).upper())
+            envy = GetFloatValueSD(('widthy_' + name).upper())
+        except RuntimeError:
+            return {}
+        # TODO: move sanity check to later, so values will simply be
+        # unchecked/grayed out, instead of removed completely
+        # The magic number -9999.0 signals corrupt values.
+        # FIXME: Sometimes width=0 is returned. ~ Meaning?
+        if posx == -9999 or posy == -9999 or envx <= 0 or envy <= 0:
+            return {}
         xoffs, yoffs = self._offsets.get(name, (0, 0))
-        values['posx'] += xoffs
-        values['posy'] += yoffs
-        values['posx'] = -values['posx']
-        return values
+        return {
+            'posx': -(posx / 1000 + xoffs),
+            'posy': +(posy / 1000 + yoffs),
+            'envx': envx / 1000,
+            'envy': envy / 1000,
+        }
 
     def read_param(self, param):
         """Read parameter. Return numeric value."""
