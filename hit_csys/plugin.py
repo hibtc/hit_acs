@@ -14,7 +14,7 @@ except ImportError:
 from pydicti import dicti
 
 from .beamoptikdll import BeamOptikDLL, ExecOptions
-from .stub import BImpostikDLL
+from .beamoptikstub import BeamOptikStub
 
 import madgui.util.unit as unit
 import madgui.online.api as api
@@ -179,7 +179,7 @@ class TestBackend(_HitBackend):
     def __init__(self, session, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         model = session.model
-        session.user_ns.dll = proxy = BImpostikDLL(model, offsets, settings)
+        session.user_ns.dll = proxy = BeamOptikStub(model, offsets, settings)
         proxy.set_window(session.window())
         params = load_dvm_parameters()
         session.user_ns.dll = proxy

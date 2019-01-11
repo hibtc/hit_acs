@@ -16,7 +16,7 @@ from .util import TimeoutCache, LightBox
 
 
 __all__ = [
-    'BImpostikDLL',
+    'BeamOptikStub',
 ]
 
 
@@ -29,9 +29,14 @@ def _api_meth(func):
     return wrapper
 
 
-class BImpostikDLL(object):
+class BeamOptikStub(object):
 
-    """A fake implementation of the BeamOptikDLL wrapper."""
+    """
+    A fake implementation of the BeamOptikDLL python wrapper for offline
+    testing. It does not use the actual DLL but is just a thin simulation
+    layer that can partially mimick actual behaviour and provide BPM readings
+    based on a provided MAD-X model.
+    """
 
     # TODO: Support read-only/write-only parameters
     # TODO: Prevent writing unknown parameters by default
