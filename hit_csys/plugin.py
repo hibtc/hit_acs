@@ -112,10 +112,10 @@ class _HitBackend(api.Backend):
         # TODO: Handle usability of parameters individually
         try:
             GetFloatValueSD = self._dvm.GetFloatValueSD
-            posx = GetFloatValueSD(('posx_' + name).upper())
-            posy = GetFloatValueSD(('posy_' + name).upper())
-            envx = GetFloatValueSD(('widthx_' + name).upper())
-            envy = GetFloatValueSD(('widthy_' + name).upper())
+            posx = GetFloatValueSD('posx_' + name)
+            posy = GetFloatValueSD('posy_' + name)
+            envx = GetFloatValueSD('widthx_' + name)
+            envy = GetFloatValueSD('widthy_' + name)
         except RuntimeError:
             return {}
         # TODO: move sanity check to later, so values will simply be
