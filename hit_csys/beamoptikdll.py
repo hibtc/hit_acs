@@ -107,8 +107,6 @@ class BeamOptikDLL(object):
         self.lib = lib
         self._funcs = _load_functions(lib)
         self._iid = None
-        self._selected_vacc = None
-        self._selected_efi = EFI(None, None, None, None)
         self._variant = variant
 
     def __bool__(self):
@@ -178,7 +176,6 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
         """
         self._call('SelectVAcc', self.iid, Int(vaccnum))
-        self._selected_vacc = vaccnum
 
     def SelectMEFI(self, vaccnum, energy, focus, intensity, gantry_angle=0):
         """
@@ -201,10 +198,6 @@ class BeamOptikDLL(object):
         self._call(func, self.iid, Int(vaccnum),
                    Int(energy), Int(focus), Int(intensity), Int(gantry_angle),
                    *values)
-        if vaccnum == self._selected_vacc:
-            self._selected_efi = EFI(energy, focus, intensity, gantry_angle)
-        else:
-            logging.warn('You must call SelectVAcc() before SelectMEFI()!')
         return EFI(*[v.value for v in values])
 
     def GetSelectedVAcc(self):
@@ -315,13 +308,6 @@ class BeamOptikDLL(object):
         self._call('StartRampDataGeneration', self.iid,
                    Int(vaccnum), Int(energy), Int(focus), Int(intensity),
                    order_num)
-        sel_efi = self._selected_efi
-        if (vaccnum != self._selected_vacc or
-                energy != sel_efi.energy or
-                focus != sel_efi.focus or
-                intensity != sel_efi.intensity):
-            logging.warn(
-                "You must call SelectEFI() before StartRampDataGeneration()!")
         return order_num.value
 
     def GetRampDataValue(self, order_num, event_num, delay,
