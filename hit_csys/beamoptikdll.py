@@ -451,4 +451,5 @@ def _declare(lib, argtypes):
     funcs = {method: lib[method] for method in argtypes}
     for method, types in argtypes.items():
         funcs[method].argtypes = types
+        funcs[method].restype = None
     return funcs
