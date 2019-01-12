@@ -145,7 +145,7 @@ class BeamOptikDLL(object):
         iid = Int()
         self._call('GetInterfaceInstance', iid)
         self._iid = iid
-        return iid
+        return iid.value
 
     def FreeInterfaceInstance(self):
         """
