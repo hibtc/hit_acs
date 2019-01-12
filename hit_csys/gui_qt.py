@@ -11,7 +11,7 @@ console.
 .. _spyderlib: https://github.com/spyder-ide/spyder
 
 The DLL is connected on startup and the wrapper object is stored in the
-global variable ``dvm``.
+global variable ``dll``.
 """
 
 from __future__ import absolute_import
@@ -60,10 +60,8 @@ class MainWindow(QtGui.QMainWindow):
     def load_dll(self):
         ns = self.ns
         ns['window'] = self
-        ns['dvm'] = BeamOptikDLL.load_library()
-        # proxy = BeamOptikDllProxy({})
-        # ns['dvm'] = BeamOptikDLL(proxy)
-        ns['dvm'].GetInterfaceInstance()
+        ns['dll'] = BeamOptikDLL()
+        ns['dll'].GetInterfaceInstance()
 
 
 def main():

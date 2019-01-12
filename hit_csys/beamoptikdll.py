@@ -12,6 +12,13 @@ import ctypes
 import logging
 import platform
 
+is_64bit = platform.architecture()[0] == '64bit'
+
+try:
+    basestring
+except NameError:
+    basestring = str
+
 
 def _encode(s):
     return s if isinstance(s, bytes) else s.encode('utf-8')
@@ -21,7 +28,7 @@ def _decode(s):
     return s.decode('utf-8') if isinstance(s, bytes) else s
 
 
-if platform.architecture()[0] == '64bit':
+if is_64bit:
     def Str(s):
         return _Str(_decode(s))
     _Str = ctypes.c_wchar_p         # constructor wants unicode
@@ -63,18 +70,11 @@ def make_enum(name, value_names):
     return Enum
 
 
-DVMStatus = make_enum('DVMStatus', [
-    'Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error'
-])
-GetOptions = make_enum('GetOptions', [
-    'Current', 'Saved'
-])
-ExecOptions = make_enum('ExecOptions', [
-    'CalcAll', 'CalcDif', 'SimplyStore'
-])
-GetSDOptions = make_enum('GetSDOptions', [
-    'Current', 'Database', 'Test'
-])
+DVMStatus = make_enum('DVMStatus', ['Stop', 'Idle', 'Init', 'Ready',
+                                    'Busy', 'Finish', 'Error'])
+GetOptions = make_enum('GetOptions', ['Current', 'Saved'])
+ExecOptions = make_enum('ExecOptions', ['CalcAll', 'CalcDif', 'SimplyStore'])
+GetSDOptions = make_enum('GetSDOptions', ['Current', 'Database', 'Test'])
 
 
 class BeamOptikDLL(object):
@@ -85,92 +85,44 @@ class BeamOptikDLL(object):
     It abstracts the ctypes data types and automates InterfaceId as well as
     iDone. Nothing else.
 
-    Instanciation is a two-step process as follows:
+    You must call the ``GetInterfaceInstance`` method after object creation to
+    initialize the DLL.
 
-    >>> obj = BeamOptikDLL.load_library()
+    >>> obj = BeamOptikDLL()
     >>> obj.GetInterfaceInstance()
     """
 
-    if platform.architecture()[0] == '64bit':
-        filename = 'BeamOptikDLL64.dll'
-    else:
-        filename = 'BeamOptikDLL.dll'
+    filename = 'BeamOptikDLL64.dll' if is_64bit else 'BeamOptikDLL.dll'
 
-    # internal methods
-
-    error_messages = [
-        None,
-        "Invalid Interface ID.",
-        "Parameter not found in internal DVM list.",
-        "GetValue failed.",
-        "SetValue failed.",
-        "Unknown option.",
-        "Memory error.",
-        "General runtime error.",
-        "Ramp event not supported.",
-        "Ramp data not available.",
-        "Invalid offset for ramp function."]
-
-    @classmethod
-    def check_return(cls, done):
+    def __init__(self, lib=filename, variant='HIT'):
         """
-        Check DLL-API exit code for errors and raise exception.
+        Load library and initialize member variables.
 
-        :param int done: exit code of an DLL function
-        :raises RuntimeError: if the exit code is a known error code != 0
-        :raises ValueError: if the exit code is unknown
+        :param str lib: filename or DLL proxy object
+        :param str variant: 'HIT' or 'MIT', decides whether the `_RKA` set of
+                            functions will be used internally
         """
-        if 0 < done and done < len(cls.error_messages):
-            raise RuntimeError(cls.error_messages[done])
-        elif done != 0:
-            raise ValueError("Unknown error: %i" % done)
+        if isinstance(lib, basestring):
+            lib = ctypes.windll.LoadLibrary(lib)
+        self.lib = lib
+        self._funcs = _load_functions(lib)
+        self._iid = None
+        self._variant = variant
 
-    def _call(self, function, *params):
-        """
-        Call the specified DLL function.
+    def __bool__(self):
+        """Check if the object belongs to an initialized interface instance."""
+        return self._iid is not None
 
-        :param str function: name of the function to call
-        :param params: ctype function parameters except for piDone.
-        :raises RuntimeError: if the exit code indicates any error
+    __nonzero__ = __bool__
 
-        For internal use only!
-        """
-        done = Int()
-        params = list(params)
-        if function in ('SelectMEFI', 'SelectMEFI_RKA'):
-            params.insert(6, done)
-        else:
-            params.append(done)
-        logging.debug('{}{}'.format(function, tuple(params)))
-        func = self._funcs[function]
-        func(*params)
-        self.check_return(done.value)
-
-    # things that don't require IID to be set:
-
-    @classmethod
-    def load_library(cls, filename=filename, variant='HIT'):
-        """
-        Search for the DLL in PATH and return a BeamOptikDLL wrapper object.
-
-        NOTE: for the 64bit library, you also need 'ParamDownloads64.dll' in
-        your PATH.
-        """
-        try:
-            return cls(ctypes.windll.LoadLibrary(filename), variant)
-        except AttributeError:
-            raise OSError("BeamOptikDLL.dll only available on windows.")
-
-    @classmethod
-    def check_library(cls):
-        """Check if library is available."""
-        try:
-            ctypes.windll
-        except AttributeError:
-            # Not available for Linux:
-            return False
-        # TODO: try to find DLL, return False if not in PATH
-        return True
+    @property
+    def iid(self):
+        """Interface instance ID."""
+        if self._iid is None:
+            raise RuntimeError(
+                "GetInterfaceInstance must be called "
+                "before using other methods.")
+        return self._iid
 
     def DisableMessageBoxes(self):
         """
@@ -193,45 +145,7 @@ class BeamOptikDLL(object):
         iid = Int()
         self._call('GetInterfaceInstance', iid)
         self._iid = iid
-        return iid
-
-    @property
-    def lib(self):
-        """Shared library proxy."""
-        return self._lib
-
-    # object API
-
-    def __init__(self, lib, variant='HIT'):
-        """
-        Initialize member variables.
-
-        Usually, you want to use :classmethod:`load_library` to create
-        instances instead of directly invoking this constructor.
-
-        :param lib: shared library proxy object
-        """
-        self._funcs = _load_functions(lib)
-        self._lib = lib
-        self._iid = None
-        self._selected_vacc = None
-        self._selected_efi = EFI(None, None, None, None)
-        self._variant = variant
-
-    @property
-    def iid(self):
-        """Interface instance ID."""
-        if self._iid is None:
-            raise RuntimeError(
-                "GetInterfaceInstance must be called "
-                "before using other methods.")
-        return self._iid
-
-    def __bool__(self):
-        """Check if the object belongs to an initialized interface instance."""
-        return self._iid is not None
-
-    __nonzero__ = __bool__
+        return iid.value
 
     def FreeInterfaceInstance(self):
         """
@@ -262,7 +176,6 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
         """
         self._call('SelectVAcc', self.iid, Int(vaccnum))
-        self._selected_vacc = vaccnum
 
     def SelectMEFI(self, vaccnum, energy, focus, intensity, gantry_angle=0):
         """
@@ -285,10 +198,6 @@ class BeamOptikDLL(object):
         self._call(func, self.iid, Int(vaccnum),
                    Int(energy), Int(focus), Int(intensity), Int(gantry_angle),
                    *values)
-        if vaccnum == self._selected_vacc:
-            self._selected_efi = EFI(energy, focus, intensity, gantry_angle)
-        else:
-            logging.warn('You must call SelectVAcc() before SelectMEFI()!')
         return EFI(*[v.value for v in values])
 
     def GetSelectedVAcc(self):
@@ -384,7 +293,9 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
         """
         value = Double()
-        self._call('GetLastFloatValueSD', self.iid, Str(name),
+        func = ('GetLastFloatValueSD' if self.variant == 'HIT' else
+                'GetLastFloatValueSD_RKA')
+        self._call(func, self.iid, Str(name),
                    value, Int(vaccnum), Int(options),
                    Int(energy), Int(focus), Int(intensity), Int(gantry_angle))
         return value.value
@@ -397,13 +308,6 @@ class BeamOptikDLL(object):
         self._call('StartRampDataGeneration', self.iid,
                    Int(vaccnum), Int(energy), Int(focus), Int(intensity),
                    order_num)
-        sel_efi = self._selected_efi
-        if (vaccnum != self._selected_vacc or
-                energy != sel_efi.energy or
-                focus != sel_efi.focus or
-                intensity != sel_efi.intensity):
-            logging.warn(
-                "You must call SelectEFI() before StartRampDataGeneration()!")
         return order_num.value
 
     def GetRampDataValue(self, order_num, event_num, delay,
@@ -440,6 +344,56 @@ class BeamOptikDLL(object):
             values = [Double(), Double(), Double(), Double()]
             self._call('GetMEFIValue_RKA', self.iid, *values)
             return (EFI(*[v.value for v in values]), None)
+
+    # internal methods
+
+    def _call(self, function, *params):
+        """
+        Call the specified DLL function.
+
+        :param str function: name of the function to call
+        :param params: ctype function parameters except for piDone.
+        :raises RuntimeError: if the exit code indicates any error
+
+        For internal use only!
+        """
+        done = Int()
+        params = list(params)
+        if function in ('SelectMEFI', 'SelectMEFI_RKA'):
+            params.insert(6, done)
+        else:
+            params.append(done)
+        logging.debug('{}{}'.format(function, tuple(params)))
+        func = self._funcs[function]
+        func(*params)
+        self.check_return(done.value)
+
+    @classmethod
+    def check_return(cls, done):
+        """
+        Check DLL-API exit code for errors and raise exception.
+
+        :param int done: exit code of an DLL function
+        :raises RuntimeError: if the exit code is a known error code != 0
+        :raises ValueError: if the exit code is unknown
+        """
+        if 0 < done and done < len(cls.error_messages):
+            raise RuntimeError(cls.error_messages[done])
+        elif done != 0:
+            raise ValueError("Unknown error: %i" % done)
+
+    error_messages = [
+        None,
+        "Invalid Interface ID.",
+        "Parameter not found in internal DVM list.",
+        "GetValue failed.",
+        "SetValue failed.",
+        "Unknown option.",
+        "Memory error.",
+        "General runtime error.",
+        "Ramp event not supported.",
+        "Ramp data not available.",
+        "Invalid offset for ramp function."]
 
 
 def _load_functions(lib):
@@ -478,4 +432,5 @@ def _declare(lib, argtypes):
     funcs = {method: lib[method] for method in argtypes}
     for method, types in argtypes.items():
         funcs[method].argtypes = types
+        funcs[method].restype = None
     return funcs
