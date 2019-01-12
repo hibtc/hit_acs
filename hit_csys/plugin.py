@@ -167,7 +167,7 @@ class OnlineBackend(_HitBackend):
 
     def __init__(self, session, settings):
         """Connect to online database."""
-        session.user_ns.dll = dvm = BeamOptikDLL.load_library(
+        session.user_ns.dll = dvm = BeamOptikDLL(
             variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))

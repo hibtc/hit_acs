@@ -60,7 +60,7 @@ class MainWindow(QtGui.QMainWindow):
     def load_dll(self):
         ns = self.ns
         ns['window'] = self
-        ns['dll'] = BeamOptikDLL.load_library()
+        ns['dll'] = BeamOptikDLL()
         ns['dll'].GetInterfaceInstance()
 
 

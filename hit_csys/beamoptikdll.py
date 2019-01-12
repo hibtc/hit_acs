@@ -12,6 +12,11 @@ import ctypes
 import logging
 import platform
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
 
 def _encode(s):
     return s if isinstance(s, bytes) else s.encode('utf-8')
@@ -85,9 +90,10 @@ class BeamOptikDLL(object):
     It abstracts the ctypes data types and automates InterfaceId as well as
     iDone. Nothing else.
 
-    Instanciation is a two-step process as follows:
+    You must call the ``GetInterfaceInstance`` method after object creation to
+    initialize the DLL.
 
-    >>> obj = BeamOptikDLL.load_library()
+    >>> obj = BeamOptikDLL()
     >>> obj.GetInterfaceInstance()
     """
 
@@ -149,19 +155,6 @@ class BeamOptikDLL(object):
     # things that don't require IID to be set:
 
     @classmethod
-    def load_library(cls, filename=filename, variant='HIT'):
-        """
-        Search for the DLL in PATH and return a BeamOptikDLL wrapper object.
-
-        NOTE: for the 64bit library, you also need 'ParamDownloads64.dll' in
-        your PATH.
-        """
-        try:
-            return cls(ctypes.windll.LoadLibrary(filename), variant)
-        except AttributeError:
-            raise OSError("BeamOptikDLL.dll only available on windows.")
-
-    @classmethod
     def check_library(cls):
         """Check if library is available."""
         try:
@@ -202,15 +195,16 @@ class BeamOptikDLL(object):
 
     # object API
 
-    def __init__(self, lib, variant='HIT'):
+    def __init__(self, lib=filename, variant='HIT'):
         """
-        Initialize member variables.
+        Load library and initialize member variables.
 
-        Usually, you want to use :classmethod:`load_library` to create
-        instances instead of directly invoking this constructor.
-
-        :param lib: shared library proxy object
+        :param str lib: filename or DLL proxy object
+        :param str variant: 'HIT' or 'MIT', decides whether the `_RKA` set of
+                            functions will be used internally
         """
+        if isinstance(lib, basestring):
+            lib = ctypes.windll.LoadLibrary(lib)
         self._funcs = _load_functions(lib)
         self._lib = lib
         self._iid = None

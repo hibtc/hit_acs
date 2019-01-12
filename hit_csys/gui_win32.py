@@ -15,7 +15,7 @@ from .beamoptikdll import BeamOptikDLL
 def main():
     """Invoke GUI application."""
     logging.basicConfig(level=logging.INFO)
-    dll = BeamOptikDLL.load_library()
+    dll = BeamOptikDLL()
     dll.GetInterfaceInstance()
     win32gui.PumpMessages()
 

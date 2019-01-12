@@ -33,7 +33,7 @@ class App(wx.App):
         frame.crust.shell.redirectStderr()
         logging.basicConfig(level=logging.INFO)
         loc['frame'] = frame
-        loc['dll'] = BeamOptikDLL.load_library()
+        loc['dll'] = BeamOptikDLL()
         loc['dll'].GetInterfaceInstance()
         return True
 
