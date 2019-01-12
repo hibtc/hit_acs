@@ -152,19 +152,6 @@ class BeamOptikDLL(object):
         func(*params)
         self.check_return(done.value)
 
-    # things that don't require IID to be set:
-
-    @classmethod
-    def check_library(cls):
-        """Check if library is available."""
-        try:
-            ctypes.windll
-        except AttributeError:
-            # Not available for Linux:
-            return False
-        # TODO: try to find DLL, return False if not in PATH
-        return True
-
     def DisableMessageBoxes(self):
         """
         Prevent creation of certain message boxes.
