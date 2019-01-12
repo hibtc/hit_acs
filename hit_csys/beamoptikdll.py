@@ -307,7 +307,9 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code indicates any error
         """
         value = Double()
-        self._call('GetLastFloatValueSD', self.iid, Str(name),
+        func = ('GetLastFloatValueSD' if self.variant == 'HIT' else
+                'GetLastFloatValueSD_RKA')
+        self._call(func, self.iid, Str(name),
                    value, Int(vaccnum), Int(options),
                    Int(energy), Int(focus), Int(intensity), Int(gantry_angle))
         return value.value
