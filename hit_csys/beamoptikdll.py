@@ -70,18 +70,11 @@ def make_enum(name, value_names):
     return Enum
 
 
-DVMStatus = make_enum('DVMStatus', [
-    'Stop', 'Idle', 'Init', 'Ready', 'Busy', 'Finish', 'Error'
-])
-GetOptions = make_enum('GetOptions', [
-    'Current', 'Saved'
-])
-ExecOptions = make_enum('ExecOptions', [
-    'CalcAll', 'CalcDif', 'SimplyStore'
-])
-GetSDOptions = make_enum('GetSDOptions', [
-    'Current', 'Database', 'Test'
-])
+DVMStatus = make_enum('DVMStatus', ['Stop', 'Idle', 'Init', 'Ready',
+                                    'Busy', 'Finish', 'Error'])
+GetOptions = make_enum('GetOptions', ['Current', 'Saved'])
+ExecOptions = make_enum('ExecOptions', ['CalcAll', 'CalcDif', 'SimplyStore'])
+GetSDOptions = make_enum('GetSDOptions', ['Current', 'Database', 'Test'])
 
 
 class BeamOptikDLL(object):
