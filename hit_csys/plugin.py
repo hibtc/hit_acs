@@ -45,8 +45,8 @@ def load_dvm_parameters():
 
 class _HitBackend(api.Backend):
 
-    def __init__(self, dvm, params, model=None, offsets=None, settings=None):
-        self._dvm = dvm
+    def __init__(self, lib, params, model=None, offsets=None, settings=None):
+        self._lib = lib
         self._params = params
         self._params.update({
             'gantry_angle': dict(
@@ -67,37 +67,37 @@ class _HitBackend(api.Backend):
 
     def connect(self):
         """Connect to online database (must be loaded)."""
-        self._dvm.GetInterfaceInstance()
+        self._lib.GetInterfaceInstance()
         self.connected.set(True)
         settings = self.settings or {}
         # We should probably select VAcc/MEFI based on loaded sequence… or the
         # other way round? …anyway doing something unexpected might be even
         # more inconvienient than simply using the last selected:
         if settings.get('vacc'):
-            self._dvm.SelectVAcc(settings['vacc'])
+            self._lib.SelectVAcc(settings['vacc'])
         if settings.get('vacc') and settings.get('mefi'):
-            self._dvm.SelectMEFI(settings['vacc'], *settings['mefi'])
+            self._lib.SelectMEFI(settings['vacc'], *settings['mefi'])
 
     def disconnect(self):
         """Disconnect from online database."""
         (self.settings or {}).update(self.export_settings())
-        self._dvm.FreeInterfaceInstance()
+        self._lib.FreeInterfaceInstance()
         self.connected.set(False)
 
     def export_settings(self):
-        mefi = self._dvm.GetMEFIValue()[1]
+        mefi = self._lib.GetMEFIValue()[1]
         settings = {
-            'variant': self._dvm._variant,
-            'vacc': self._dvm.GetSelectedVAcc(),
+            'variant': self._lib._variant,
+            'vacc': self._lib.GetSelectedVAcc(),
             'mefi': mefi and tuple(mefi),
         }
-        if hasattr(self._dvm, 'export_settings'):
-            settings.update(self._dvm.export_settings())
+        if hasattr(self._lib, 'export_settings'):
+            settings.update(self._lib.export_settings())
         return settings
 
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
-        self._dvm.ExecuteChanges(options)
+        self._lib.ExecuteChanges(options)
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
@@ -111,7 +111,7 @@ class _HitBackend(api.Backend):
         """
         # TODO: Handle usability of parameters individually
         try:
-            GetFloatValueSD = self._dvm.GetFloatValueSD
+            GetFloatValueSD = self._lib.GetFloatValueSD
             posx = GetFloatValueSD('posx_' + name)
             posy = GetFloatValueSD('posy_' + name)
             envx = GetFloatValueSD('widthx_' + name)
@@ -135,26 +135,26 @@ class _HitBackend(api.Backend):
     def read_param(self, param):
         """Read parameter. Return numeric value."""
         if param == 'gantry_angle':
-            return self._dvm.GetMEFIValue()[0][3]
+            return self._lib.GetMEFIValue()[0][3]
         try:
-            return self._dvm.GetFloatValue(param)
+            return self._lib.GetFloatValue(param)
         except RuntimeError as e:
             logging.error("{} for {!r}".format(e, param))
 
     def write_param(self, param, value):
         """Update parameter into control system."""
         try:
-            self._dvm.SetFloatValue(param, value)
+            self._lib.SetFloatValue(param, value)
         except RuntimeError as e:
             logging.error("{} for {!r} = {}".format(e, param, value))
 
     def get_beam(self):
         units  = unit.units
         e_para = ENERGY_PARAM.get(self._model().seq_name, 'E_HEBT')
-        z_num  = self._dvm.GetFloatValue('Z_POSTSTRIP')
-        mass   = self._dvm.GetFloatValue('A_POSTSTRIP') * units.u
-        charge = self._dvm.GetFloatValue('Q_POSTSTRIP') * units.e
-        e_kin  = (self._dvm.GetFloatValue(e_para) or 1) * units.MeV / units.u
+        z_num  = self._lib.GetFloatValue('Z_POSTSTRIP')
+        mass   = self._lib.GetFloatValue('A_POSTSTRIP') * units.u
+        charge = self._lib.GetFloatValue('Q_POSTSTRIP') * units.e
+        e_kin  = (self._lib.GetFloatValue(e_para) or 1) * units.MeV / units.u
         return {
             'particle': PERIODIC_TABLE[round(z_num)],
             'charge':   unit.from_ui('charge', charge),
@@ -167,11 +167,11 @@ class OnlineBackend(_HitBackend):
 
     def __init__(self, session, settings):
         """Connect to online database."""
-        session.user_ns.dll = dvm = BeamOptikDLL(
+        session.user_ns.dll = lib = BeamOptikDLL(
             variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
-        super().__init__(dvm, params, session.model, offsets, settings)
+        super().__init__(lib, params, session.model, offsets, settings)
 
 
 class TestBackend(_HitBackend):
@@ -179,9 +179,9 @@ class TestBackend(_HitBackend):
     def __init__(self, session, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         model = session.model
-        session.user_ns.dll = proxy = BeamOptikStub(model, offsets, settings)
-        proxy.set_window(session.window())
+        session.user_ns.dll = lib = BeamOptikStub(model, offsets, settings)
+        lib.set_window(session.window())
         params = load_dvm_parameters()
-        session.user_ns.dll = proxy
-        super().__init__(proxy, params, session.model, offsets)
-        self.connected.changed.connect(proxy.on_connected_changed)
+        session.user_ns.dll = lib
+        super().__init__(lib, params, session.model, offsets)
+        self.connected.changed.connect(lib.on_connected_changed)
