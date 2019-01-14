@@ -19,9 +19,9 @@ def exec_file(path):
 def main():
     """Execute setup."""
     long_description = read_file('README.rst').decode('utf-8')
-    meta = exec_file('hit_csys/__init__.py')
+    meta = exec_file('hit_acs/__init__.py')
     setup(
-        name='hit_csys',
+        name='hit_acs',
         version=meta['__version__'],
         description=meta['__summary__'],
         long_description=long_description,
@@ -31,11 +31,11 @@ def main():
         license=meta['__license__'],
         classifiers=meta['__classifiers__'],
         packages=[
-            'hit_csys',
+            'hit_acs',
         ],
         entry_points={
             'gui_scripts': [
-                'hit_csys = hit_csys.gui_wx:main'
+                'hit_acs = hit_acs.gui_wx:main'
             ],
         },
         install_requires=[

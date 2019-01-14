@@ -38,7 +38,7 @@ PERIODIC_TABLE = {
 
 
 def load_dvm_parameters():
-    blob = read_binary('hit_csys', 'DVM-Parameter_v2.10.0-HIT.csv')
+    blob = read_binary('hit_acs', 'DVM-Parameter_v2.10.0-HIT.csv')
     parlist = load_csv(blob.splitlines(), 'utf-8')
     return dicti({p['name']: p for p in parlist})
 

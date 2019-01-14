@@ -1,6 +1,6 @@
 """
 Fake implementation of BeamOptikDLL wrapper. Emulates the API of
-:class:`~hit_csys.beamoptikdll.BeamOptikDLL`. Primarily used for
+:class:`~hit_acs.beamoptikdll.BeamOptikDLL`. Primarily used for
 offline testing of the basic functionality.
 """
 
@@ -91,7 +91,7 @@ class BeamOptikStub(object):
 
     def set_window(self, window):
         self.window = window
-        self.menu = window and window.csys_settings_menu
+        self.menu = window and window.acs_settings_menu
         if window is None:
             return
         from madgui.util.collections import Bool

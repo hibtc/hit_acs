@@ -3,7 +3,7 @@
 Tools to work with DVM paramater list.
 """
 
-from hit_csys.util import csv_unicode_reader
+from hit_acs.util import csv_unicode_reader
 
 
 # CSV column types

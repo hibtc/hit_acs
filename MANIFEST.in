@@ -1,3 +1,3 @@
 include README.rst
-include hit_csys/*.csv
-include hit_csys/*.yml
+include hit_acs/*.csv
+include hit_acs/*.yml

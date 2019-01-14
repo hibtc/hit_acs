@@ -6,9 +6,9 @@ Python API for talking to the HIT online control/DVM.
 from __future__ import unicode_literals
 
 
-__title__ = 'hit_csys'
-__summary__ = 'Online control for the HIT accelerator facility.'
-__uri__ = 'https://github.com/hibtc/hit-csys'
+__title__ = 'hit_acs'
+__summary__ = 'Tools for the accelerator control system of the HIT facility.'
+__uri__ = 'https://github.com/hibtc/hit_acs'
 
 __version__ = '18.12.0'
 
