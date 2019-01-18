@@ -24,7 +24,8 @@ def _api_meth(func):
     """Decorator for tracing calls to BeamOptikDLL API methods."""
     @functools.wraps(func)
     def wrapper(self, *args):
-        logging.debug('{}{}'.format(func.__name__, args))
+        if func.__name__ != 'GetFloatValueSD':
+            logging.debug('{}{}'.format(func.__name__, args))
         return func(self, *args)
     return wrapper
 

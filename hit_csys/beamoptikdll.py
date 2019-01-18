@@ -363,7 +363,8 @@ class BeamOptikDLL(object):
             params.insert(6, done)
         else:
             params.append(done)
-        logging.debug('{}{}'.format(function, tuple(params)))
+        if function != 'GetFloatValueSD':
+            logging.debug('{}{}'.format(function, tuple(params)))
         func = self._funcs[function]
         func(*params)
         self.check_return(done.value)
