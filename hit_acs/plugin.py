@@ -43,7 +43,7 @@ def load_dvm_parameters():
     return dicti({p['name']: p for p in parlist})
 
 
-class _HitBackend(api.Backend):
+class _HitACS(api.Backend):
 
     def __init__(self, lib, params, model=None, offsets=None, settings=None):
         self._lib = lib
@@ -168,7 +168,7 @@ class _HitBackend(api.Backend):
         }
 
 
-class OnlineBackend(_HitBackend):
+class HitACS(_HitACS):
 
     def __init__(self, session, settings):
         """Connect to online database."""
@@ -179,7 +179,7 @@ class OnlineBackend(_HitBackend):
         super().__init__(lib, params, session.model, offsets, settings)
 
 
-class TestBackend(_HitBackend):
+class TestACS(_HitACS):
 
     def __init__(self, session, settings):
         offsets = find_offsets(settings.get('runtime_path', '.'))
