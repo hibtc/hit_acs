@@ -1,6 +1,33 @@
 CHANGELOG
 ~~~~~~~~~
 
+19.01.0
+-------
+
+- rename package to ``hit_acs``
+- fix another error in ``SetNewValueCallback`` due to using missing ``.value``
+  attribute on string parameter
+- fix ``SetNewValueCallback`` string parameter type: ANSI string
+- use ctypes argtypes declarations for DLL functions
+- improve startup performance by cleaning up csv parser logic
+- keep units as strings (requires newer madgui)
+- avoid unused parameter grouping by element
+- fix potential startup exception if MEFI is given in settings but VAcc is not
+- simplify ``read_monitor`` implementation
+- set the beamoptikdll as *permanent* variable into the user namespace as
+  simplification (i.e. not removing the variable after disconnecting)
+- improve some internal variable names
+- change beamoptikdll variable name in user namespace (``beamoptikdll``)
+- the ``load_library`` classmethod has been removed, in favor of letting the
+  the normal ``BeamOptikDLL`` constructor now load the DLL directly
+- special case ``GetLastFloatValueSD`` for the MIT variant
+- remove two lonely warnings
+- return the IID integer value (not the ``ctypes.c_int`` instance) from
+  ``GetInterfaceInstance``
+- don't log ``GetFloatValueSD`` calls for now (temporary, to avoid too much
+  noise in debug log)
+
+
 18.12.0
 -------
 
