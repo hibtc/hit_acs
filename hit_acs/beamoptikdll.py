@@ -1,3 +1,4 @@
+# encoding: utf-8
 """
 Python wrapper for 'BeamOptikDLL.dll'.
 """
