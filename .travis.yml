@@ -28,7 +28,7 @@ jobs:
       install: skip
       script:
         - sed -i "/^__version__ = /s/'$/.dev$TRAVIS_BUILD_NUMBER'/"
-            hit_csys/__init__.py
+            hit_acs/__init__.py
         - python setup.py sdist
       deploy:
       - provider: pypi
