@@ -6,11 +6,8 @@ Madgui online control plugin.
 from __future__ import absolute_import
 
 import logging
-try:
-    from importlib_resources import read_binary
-except ImportError:
-    from pkg_resources import resource_string as read_binary
 
+from importlib_resources import read_binary
 from pydicti import dicti
 
 from .beamoptikdll import BeamOptikDLL, ExecOptions
