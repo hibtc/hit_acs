@@ -169,21 +169,20 @@ class HitACS(_HitACS):
 
     def __init__(self, session, settings):
         """Connect to online database."""
-        lib = session.user_ns.beamoptikdll = BeamOptikDLL(
-            variant=settings.get('variant', 'HIT'))
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
+        lib = session.user_ns.beamoptikdll = BeamOptikDLL(
+            variant=settings.get('variant', 'HIT'))
         super().__init__(lib, params, session.model, offsets, settings)
 
 
 class TestACS(_HitACS):
 
     def __init__(self, session, settings):
-        offsets = find_offsets(settings.get('runtime_path', '.'))
-        model = session.model
-        lib = session.user_ns.beamoptikdll = BeamOptikStub(
-            model, offsets, settings)
-        lib.set_window(session.window())
         params = load_dvm_parameters()
+        offsets = find_offsets(settings.get('runtime_path', '.'))
+        lib = session.user_ns.beamoptikdll = BeamOptikStub(
+            session.model, offsets, settings)
+        lib.set_window(session.window())
         super().__init__(lib, params, session.model, offsets)
         self.connected.changed.connect(lib.on_connected_changed)
