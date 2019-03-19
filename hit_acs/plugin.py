@@ -203,10 +203,9 @@ class TestACS(_HitACS):
         self._lib.set_float_values(read_str_file(filename))
 
     def load_sd_values(self, filename):
-        import yaml
+        from madgui.util.yaml import load_file
         self.sd_file = filename = os.path.abspath(filename)
-        with open(filename) as f:
-            data = yaml.safe_load(f)
+        data = load_file(filename)
         cols = {
             'envx': 'widthx',
             'envy': 'widthy',
