@@ -201,7 +201,6 @@ class TestACS(_HitACS):
         from madgui.util.export import read_str_file
         self.str_file = filename = os.path.abspath(filename)
         self._lib.set_float_values(read_str_file(filename))
-        self._lib.ExecuteChanges()
 
     def load_sd_values(self, filename):
         from madgui.util.yaml import load_file

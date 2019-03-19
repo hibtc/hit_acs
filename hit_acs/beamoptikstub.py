@@ -71,9 +71,7 @@ class BeamOptikStub(object):
             sigma = self._aberration_magnitude.get(prefix)
             if sigma is not None:
                 self.params[k] += gauss(0, sigma)
-
-    def set_float_values(self, data):
-        self.params = dicti(data)
+        self.ExecuteChanges()
 
     def set_sd_values(self, data):
         self.sd_values = dicti(data)
@@ -82,13 +80,13 @@ class BeamOptikStub(object):
     def set_model(self, model):
         self.model = model
         if model:
-            self.update_params(model)
+            self.set_float_values(model.globals)
             if self.auto_sd:
                 self.update_sd_values(model)
 
-    def update_params(self, model):
+    def set_float_values(self, data):
         self.params.clear()
-        self.params.update(model.globals)
+        self.params.update(data)
         self.params.update({
             'A_POSTSTRIP':  1.007281417537080e+00,
             'Q_POSTSTRIP':  1.000000000000000e+00,
@@ -98,6 +96,7 @@ class BeamOptikStub(object):
             'E_SOURCE':     2.034800000000000e+02,
             'E_MEBT':       2.034800000000000e+02,
         })
+        self.ExecuteChanges()
 
     @_api_meth
     def DisableMessageBoxes(self):
