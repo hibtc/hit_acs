@@ -86,7 +86,6 @@ class BeamOptikStub(object):
 
     def set_float_values(self, data):
         self.params.clear()
-        self.params.update(data)
         self.params.update({
             'A_POSTSTRIP':  1.007281417537080e+00,
             'Q_POSTSTRIP':  1.000000000000000e+00,
@@ -96,6 +95,7 @@ class BeamOptikStub(object):
             'E_SOURCE':     2.034800000000000e+02,
             'E_MEBT':       2.034800000000000e+02,
         })
+        self.params.update(data)
         self.ExecuteChanges()
 
     @_api_meth
