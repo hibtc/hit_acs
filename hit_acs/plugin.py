@@ -5,6 +5,7 @@ Madgui online control plugin.
 
 from __future__ import absolute_import
 
+import os
 import logging
 
 from importlib_resources import read_binary
@@ -183,6 +184,144 @@ class TestACS(_HitACS):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         lib = session.user_ns.beamoptikdll = BeamOptikStub(
             session.model, offsets, settings)
-        lib.set_window(session.window())
         super().__init__(lib, params, session.model, offsets)
-        self.connected.changed.connect(lib.on_connected_changed)
+        self.menu = None
+        self.window = None
+        self.set_window(session.window())
+        self.connected.changed.connect(self.on_connected_changed)
+
+        self.str_file = str_file = settings.get('str_file')
+        self.sd_file = sd_file = settings.get('sd_file')
+        if str_file:
+            self.load_float_values(self.str_file)
+        if sd_file:
+            self.load_sd_values(self.sd_file)
+
+    def load_float_values(self, filename):
+        from madgui.util.export import read_str_file
+        self.str_file = filename = os.path.abspath(filename)
+        self._lib.set_float_values(read_str_file(filename))
+
+    def load_sd_values(self, filename):
+        import yaml
+        self.sd_file = filename = os.path.abspath(filename)
+        with open(filename) as f:
+            data = yaml.safe_load(f)
+        cols = {
+            'envx': 'widthx',
+            'envy': 'widthy',
+            'x': 'posx',
+            'y': 'posy',
+        }
+        self._lib.set_sd_values({
+            cols[param]+'_'+elem: value
+            for elem, values in data['monitor'].items()
+            for param, value in values.items()
+        })
+
+    def set_window(self, window):
+        self.window = window
+        self.menu = window and window.acs_settings_menu
+        if window is None:
+            return
+        from madgui.util.menu import extend, Item, Separator
+        self._lib.jitter = Bool(self._lib.jitter())
+        self._lib.auto_params = Bool(self._lib.auto_params())
+        self._lib.auto_sd = Bool(self._lib.auto_sd())
+        self.menu.clear()
+        extend(window, self.menu, [
+            Item('&Vary readouts', None,
+                 'Emulate continuous readouts using gaussian jitter',
+                 self._toggle_jitter,
+                 checked=self._lib.jitter),
+            Item('Add &magnet aberrations', None,
+                 'Add small deltas to all magnet strengths',
+                 self._lib._aberrate_strengths),
+            Separator,
+            Item('Autoset readouts from model', None,
+                 'Autoset monitor readout values from model twiss table',
+                 self._toggle_auto_sd,
+                 checked=self._lib.auto_sd),
+            Item('Autoset strengths from model', None,
+                 'Autoset magnet strengths from model values',
+                 self._toggle_auto_params,
+                 checked=self._lib.auto_params),
+            Separator,
+            Item('Load readouts from file', None,
+                 'Load monitor readout values from monitor export',
+                 self._open_sd_values),
+            Item('Load strengths from file', None,
+                 'Load magnet strengths from strength export',
+                 self._open_float_values),
+        ])
+
+    def export_settings(self):
+        return {
+            'jitter': self._lib.jitter(),
+            'shot_interval': self._lib.sd_cache.timeout,
+            'auto_sd': self._lib.auto_sd(),
+            'auto_params': self._lib.auto_params(),
+            'str_file': safe_relpath(self.str_file),
+            'sd_file': safe_relpath(self.sd_file),
+        }
+
+    def _toggle_jitter(self):
+        self._lib.jitter.set(not self._lib.jitter())
+
+    def _toggle_auto_sd(self):
+        self._lib.auto_sd.set(not self._lib.auto_sd())
+        if self._lib.auto_sd() and self.model():
+            self._lib.update_sd_values(self.model())
+
+    def _toggle_auto_params(self):
+        self._lib.auto_params.set(not self.auto_params())
+        if self._lib.auto_params() and self.model():
+            self._lib.update_params(self.model())
+
+    def _open_sd_values(self):
+        from madgui.widget.filedialog import getOpenFileName
+        filters = [
+            ("YAML files", "*.yml", "*.yaml"),
+            ("All files", "*"),
+        ]
+        folder = self.window.str_folder or self.window.folder
+        if self.sd_file:
+            folder = os.path.dirname(self.sd_file)
+        filename = getOpenFileName(
+            self.window, 'Open monitor export', folder, filters)
+        if filename:
+            self.load_sd_values(filename)
+
+    def _open_float_values(self):
+        from madgui.widget.filedialog import getOpenFileName
+        filters = [
+            ("STR files", "*.str"),
+            ("All files", "*"),
+        ]
+        folder = self.window.str_folder or self.window.folder
+        if self.str_file:
+            folder = os.path.dirname(self.str_file)
+        filename = getOpenFileName(
+            self.window, 'Open strength export', folder, filters)
+        if filename:
+            self.load_float_values(filename)
+
+    def on_connected_changed(self, connected):
+        if connected:
+            self.model.changed.connect(self._lib.set_model)
+            self._lib.set_model(self.model())
+        else:
+            self.model.changed.disconnect(self._lib.set_model)
+        if self.menu:
+            self.menu.setEnabled(connected)
+
+    @property
+    def model(self):
+        return self._model
+
+
+def safe_relpath(path, start=None):
+    try:
+        return path and os.path.relpath(path, start)
+    except ValueError:  # e.g. different drive on windows
+        return path
