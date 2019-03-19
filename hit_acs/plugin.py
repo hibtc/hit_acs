@@ -16,6 +16,7 @@ from .beamoptikstub import BeamOptikStub
 
 import madgui.util.unit as unit
 import madgui.online.api as api
+from madgui.util.misc import relpath as safe_relpath
 from madgui.util.collections import Bool
 
 from .dvm_parameters import load_csv
@@ -255,8 +256,8 @@ class TestACS(_HitACS):
             'jitter': self.jitter(),
             'shot_interval': self._lib.sd_cache.timeout,
             'auto_sd': self.auto_sd(),
-            'str_file': safe_relpath(self.str_file),
-            'sd_file': safe_relpath(self.sd_file),
+            'str_file': self.str_file and safe_relpath(self.str_file, None),
+            'sd_file': self.str_file and safe_relpath(self.sd_file, None),
         }
 
     def _toggle_jitter(self):
@@ -313,10 +314,3 @@ class TestACS(_HitACS):
     @property
     def model(self):
         return self._model
-
-
-def safe_relpath(path, start=None):
-    try:
-        return path and os.path.relpath(path, start)
-    except ValueError:  # e.g. different drive on windows
-        return path
