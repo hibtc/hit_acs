@@ -11,7 +11,7 @@ from random import gauss, gammavariate as gamma
 from pydicti import dicti
 
 from .beamoptikdll import DVMStatus, GetOptions, EFI
-from .util import TimeoutCache, LightBox
+from .util import TimeoutCache
 
 
 __all__ = [
@@ -53,9 +53,9 @@ class BeamOptikStub(object):
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.settings = settings
-        self.jitter = LightBox(settings.get('jitter', True))
-        self.auto_params = LightBox(settings.get('auto_params', True))
-        self.auto_sd = LightBox(settings.get('auto_sd', True))
+        self.jitter = settings.get('jitter', True)
+        self.auto_params = settings.get('auto_params', True)
+        self.auto_sd = settings.get('auto_sd', True)
         self._variant = variant
 
     _aberration_magnitude = {
@@ -75,17 +75,18 @@ class BeamOptikStub(object):
 
     def set_float_values(self, data):
         self.params = dicti(data)
-        self.auto_params.set(False)
+        self.auto_params = False
 
     def set_sd_values(self, data):
         self.sd_values = dicti(data)
-        self.auto_sd.set(False)
+        self.auto_sd = False
 
-    def on_model_changed(self, model):
+    def set_model(self, model):
+        self.model = model
         if model:
-            if self.auto_params():
+            if self.auto_params:
                 self.update_params(model)
-            if self.auto_sd():
+            if self.auto_sd:
                 self.update_sd_values(model)
 
     def update_params(self, model):
@@ -161,8 +162,8 @@ class BeamOptikStub(object):
     @_api_meth
     def ExecuteChanges(self, options):
         """Compute new measurements based on current model."""
-        if self.auto_sd():
-            self.update_sd_values(self.model())
+        if self.auto_sd:
+            self.update_sd_values(self.model)
 
     @_api_meth
     def SetNewValueCallback(self, callback):
@@ -173,7 +174,7 @@ class BeamOptikStub(object):
     def GetFloatValueSD(self, name, options=0):
         """Get beam diagnostic value."""
         try:
-            storage = self.sd_cache if self.jitter() else self.sd_values
+            storage = self.sd_cache if self.jitter else self.sd_values
             return storage[name] * 1000
         except KeyError:
             return -9999.0

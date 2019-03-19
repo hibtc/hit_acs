@@ -183,7 +183,7 @@ class TestACS(_HitACS):
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
         lib = session.user_ns.beamoptikdll = BeamOptikStub(
-            session.model, offsets, settings)
+            session.model(), offsets, settings)
         super().__init__(lib, params, session.model, offsets)
         self.menu = None
         self.window = None
@@ -200,6 +200,7 @@ class TestACS(_HitACS):
     def load_float_values(self, filename):
         from madgui.util.export import read_str_file
         self.str_file = filename = os.path.abspath(filename)
+        self.auto_params.set(False)
         self._lib.set_float_values(read_str_file(filename))
 
     def load_sd_values(self, filename):
@@ -212,6 +213,7 @@ class TestACS(_HitACS):
             'x': 'posx',
             'y': 'posy',
         }
+        self.auto_sd.set(False)
         self._lib.set_sd_values({
             cols[param]+'_'+elem: value
             for elem, values in data['monitor'].items()
@@ -224,15 +226,15 @@ class TestACS(_HitACS):
         if window is None:
             return
         from madgui.util.menu import extend, Item, Separator
-        self._lib.jitter = Bool(self._lib.jitter())
-        self._lib.auto_params = Bool(self._lib.auto_params())
-        self._lib.auto_sd = Bool(self._lib.auto_sd())
+        self.jitter = Bool(self._lib.jitter)
+        self.auto_params = Bool(self._lib.auto_params)
+        self.auto_sd = Bool(self._lib.auto_sd)
         self.menu.clear()
         extend(window, self.menu, [
             Item('&Vary readouts', None,
                  'Emulate continuous readouts using gaussian jitter',
                  self._toggle_jitter,
-                 checked=self._lib.jitter),
+                 checked=self.jitter),
             Item('Add &magnet aberrations', None,
                  'Add small deltas to all magnet strengths',
                  self._lib._aberrate_strengths),
@@ -240,11 +242,11 @@ class TestACS(_HitACS):
             Item('Autoset readouts from model', None,
                  'Autoset monitor readout values from model twiss table',
                  self._toggle_auto_sd,
-                 checked=self._lib.auto_sd),
+                 checked=self.auto_sd),
             Item('Autoset strengths from model', None,
                  'Autoset magnet strengths from model values',
                  self._toggle_auto_params,
-                 checked=self._lib.auto_params),
+                 checked=self.auto_params),
             Separator,
             Item('Load readouts from file', None,
                  'Load monitor readout values from monitor export',
@@ -256,25 +258,28 @@ class TestACS(_HitACS):
 
     def export_settings(self):
         return {
-            'jitter': self._lib.jitter(),
+            'jitter': self.jitter(),
             'shot_interval': self._lib.sd_cache.timeout,
-            'auto_sd': self._lib.auto_sd(),
-            'auto_params': self._lib.auto_params(),
+            'auto_sd': self.auto_sd(),
+            'auto_params': self.auto_params(),
             'str_file': safe_relpath(self.str_file),
             'sd_file': safe_relpath(self.sd_file),
         }
 
     def _toggle_jitter(self):
-        self._lib.jitter.set(not self._lib.jitter())
+        self.jitter.set(not self.jitter())
+        self._lib.jitter = self.jitter()
 
     def _toggle_auto_sd(self):
-        self._lib.auto_sd.set(not self._lib.auto_sd())
-        if self._lib.auto_sd() and self.model():
+        self.auto_sd.set(not self.auto_sd())
+        self._lib.auto_sd = self.auto_sd()
+        if self.auto_sd() and self.model():
             self._lib.update_sd_values(self.model())
 
     def _toggle_auto_params(self):
-        self._lib.auto_params.set(not self.auto_params())
-        if self._lib.auto_params() and self.model():
+        self.auto_params.set(not self.auto_params())
+        self._lib.auto_params = self.auto_params()
+        if self.auto_params() and self.model():
             self._lib.update_params(self.model())
 
     def _open_sd_values(self):
