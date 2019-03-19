@@ -10,7 +10,7 @@ from random import gauss, gammavariate as gamma
 
 from pydicti import dicti
 
-from .beamoptikdll import DVMStatus, GetOptions, EFI
+from .beamoptikdll import DVMStatus, GetOptions, ExecOptions, GetSDOptions, EFI
 from .util import TimeoutCache
 
 
@@ -156,7 +156,7 @@ class BeamOptikStub(object):
         self.params[name] = value
 
     @_api_meth
-    def ExecuteChanges(self, options):
+    def ExecuteChanges(self, options=ExecOptions.CalcDif):
         """Compute new measurements based on current model."""
         if self.model:
             self.model.update_globals(self.params)
@@ -169,7 +169,7 @@ class BeamOptikStub(object):
         raise NotImplementedError
 
     @_api_meth
-    def GetFloatValueSD(self, name, options=0):
+    def GetFloatValueSD(self, name, options=GetSDOptions.Current):
         """Get beam diagnostic value."""
         try:
             storage = self.sd_cache if self.jitter else self.sd_values
@@ -209,7 +209,7 @@ class BeamOptikStub(object):
     @_api_meth
     def GetLastFloatValueSD(self, name, vaccnum,
                             energy, focus, intensity, gantry_angle=0,
-                            options=0):
+                            options=GetSDOptions.Current):
         """Get beam diagnostic value."""
         # behave exactly like GetFloatValueSD and ignore further parameters
         # for now
