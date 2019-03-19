@@ -38,6 +38,7 @@ def main():
                 'hit_acs = hit_acs.gui_wx:main'
             ],
         },
+        python_requires='>=2.7, !=3.0, !=3.1, !=3.2',
         install_requires=[
             'pydicti>=0.0.4',
             'importlib_resources',
