@@ -54,7 +54,6 @@ class BeamOptikStub(object):
         self.offsets = {} if offsets is None else offsets
         self.settings = settings
         self.jitter = settings.get('jitter', True)
-        self.auto_params = settings.get('auto_params', True)
         self.auto_sd = settings.get('auto_sd', True)
         self._variant = variant
 
@@ -75,7 +74,6 @@ class BeamOptikStub(object):
 
     def set_float_values(self, data):
         self.params = dicti(data)
-        self.auto_params = False
 
     def set_sd_values(self, data):
         self.sd_values = dicti(data)
@@ -84,8 +82,7 @@ class BeamOptikStub(object):
     def set_model(self, model):
         self.model = model
         if model:
-            if self.auto_params:
-                self.update_params(model)
+            self.update_params(model)
             if self.auto_sd:
                 self.update_sd_values(model)
 

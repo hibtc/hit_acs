@@ -200,8 +200,8 @@ class TestACS(_HitACS):
     def load_float_values(self, filename):
         from madgui.util.export import read_str_file
         self.str_file = filename = os.path.abspath(filename)
-        self.auto_params.set(False)
         self._lib.set_float_values(read_str_file(filename))
+        self._lib.ExecuteChanges()
 
     def load_sd_values(self, filename):
         from madgui.util.yaml import load_file
@@ -227,7 +227,6 @@ class TestACS(_HitACS):
             return
         from madgui.util.menu import extend, Item, Separator
         self.jitter = Bool(self._lib.jitter)
-        self.auto_params = Bool(self._lib.auto_params)
         self.auto_sd = Bool(self._lib.auto_sd)
         self.menu.clear()
         extend(window, self.menu, [
@@ -243,10 +242,6 @@ class TestACS(_HitACS):
                  'Autoset monitor readout values from model twiss table',
                  self._toggle_auto_sd,
                  checked=self.auto_sd),
-            Item('Autoset strengths from model', None,
-                 'Autoset magnet strengths from model values',
-                 self._toggle_auto_params,
-                 checked=self.auto_params),
             Separator,
             Item('Load readouts from file', None,
                  'Load monitor readout values from monitor export',
@@ -261,7 +256,6 @@ class TestACS(_HitACS):
             'jitter': self.jitter(),
             'shot_interval': self._lib.sd_cache.timeout,
             'auto_sd': self.auto_sd(),
-            'auto_params': self.auto_params(),
             'str_file': safe_relpath(self.str_file),
             'sd_file': safe_relpath(self.sd_file),
         }
@@ -275,12 +269,6 @@ class TestACS(_HitACS):
         self._lib.auto_sd = self.auto_sd()
         if self.auto_sd() and self.model():
             self._lib.update_sd_values(self.model())
-
-    def _toggle_auto_params(self):
-        self.auto_params.set(not self.auto_params())
-        self._lib.auto_params = self.auto_params()
-        if self.auto_params() and self.model():
-            self._lib.update_params(self.model())
 
     def _open_sd_values(self):
         from madgui.widget.filedialog import getOpenFileName
