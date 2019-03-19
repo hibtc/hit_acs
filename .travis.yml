@@ -27,7 +27,7 @@ jobs:
       if: branch = test-release
       install: skip
       script:
-        - sed -i "/^version /s/$/.dev$TRAVIS_BUILD_NUMBER/" setup.cfg
+        - echo "[egg_info]\\ntag-build = dev$TRAVIS_BUILD_NUMBER" >> setup.cfg
         - python setup.py sdist
       deploy:
       - provider: pypi
