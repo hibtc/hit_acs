@@ -4,7 +4,6 @@ Fake implementation of BeamOptikDLL wrapper. Emulates the API of
 offline testing of the basic functionality.
 """
 
-import os
 import logging
 import functools
 from random import gauss, gammavariate as gamma
@@ -12,7 +11,7 @@ from random import gauss, gammavariate as gamma
 from pydicti import dicti
 
 from .beamoptikdll import DVMStatus, GetOptions, EFI
-from .util import TimeoutCache, LightBox
+from .util import TimeoutCache
 
 
 __all__ = [
@@ -54,128 +53,9 @@ class BeamOptikStub(object):
         self.model = model
         self.offsets = {} if offsets is None else offsets
         self.settings = settings
-        self.jitter = LightBox(settings.get('jitter', True))
-        self.auto_params = LightBox(settings.get('auto_params', True))
-        self.auto_sd = LightBox(settings.get('auto_sd', True))
-        self.menu = None
-        self.window = None
+        self.jitter = settings.get('jitter', True)
+        self.auto_sd = settings.get('auto_sd', True)
         self._variant = variant
-        self.str_file = str_file = settings.get('str_file')
-        self.sd_file = sd_file = settings.get('sd_file')
-        if str_file:
-            self.load_float_values(self.str_file)
-        if sd_file:
-            self.load_sd_values(self.sd_file)
-
-    def load_float_values(self, filename):
-        from madgui.util.export import read_str_file
-        self.str_file = filename = os.path.abspath(filename)
-        self.set_float_values(read_str_file(filename))
-
-    def load_sd_values(self, filename):
-        import yaml
-        self.sd_file = filename = os.path.abspath(filename)
-        with open(filename) as f:
-            data = yaml.safe_load(f)
-        cols = {
-            'envx': 'widthx',
-            'envy': 'widthy',
-            'x': 'posx',
-            'y': 'posy',
-        }
-        self.set_sd_values({
-            cols[param]+'_'+elem: value
-            for elem, values in data['monitor'].items()
-            for param, value in values.items()
-        })
-
-    def set_window(self, window):
-        self.window = window
-        self.menu = window and window.acs_settings_menu
-        if window is None:
-            return
-        from madgui.util.collections import Bool
-        from madgui.util.menu import extend, Item, Separator
-        self.jitter = Bool(self.jitter())
-        self.auto_params = Bool(self.auto_params())
-        self.auto_sd = Bool(self.auto_sd())
-        self.menu.clear()
-        extend(window, self.menu, [
-            Item('&Vary readouts', None,
-                 'Emulate continuous readouts using gaussian jitter',
-                 self._toggle_jitter,
-                 checked=self.jitter),
-            Item('Add &magnet aberrations', None,
-                 'Add small deltas to all magnet strengths',
-                 self._aberrate_strengths),
-            Separator,
-            Item('Autoset readouts from model', None,
-                 'Autoset monitor readout values from model twiss table',
-                 self._toggle_auto_sd,
-                 checked=self.auto_sd),
-            Item('Autoset strengths from model', None,
-                 'Autoset magnet strengths from model values',
-                 self._toggle_auto_params,
-                 checked=self.auto_params),
-            Separator,
-            Item('Load readouts from file', None,
-                 'Load monitor readout values from monitor export',
-                 self._open_sd_values),
-            Item('Load strengths from file', None,
-                 'Load magnet strengths from strength export',
-                 self._open_float_values),
-        ])
-
-    def export_settings(self):
-        return {
-            'jitter': self.jitter(),
-            'shot_interval': self.sd_cache.timeout,
-            'auto_sd': self.auto_sd(),
-            'auto_params': self.auto_params(),
-            'str_file': safe_relpath(self.str_file),
-            'sd_file': safe_relpath(self.sd_file),
-        }
-
-    def _toggle_jitter(self):
-        self.jitter.set(not self.jitter())
-
-    def _toggle_auto_sd(self):
-        self.auto_sd.set(not self.auto_sd())
-        if self.auto_sd() and self.model():
-            self.update_sd_values(self.model())
-
-    def _toggle_auto_params(self):
-        self.auto_params.set(not self.auto_params())
-        if self.auto_params() and self.model():
-            self.update_params(self.model())
-
-    def _open_sd_values(self):
-        from madgui.widget.filedialog import getOpenFileName
-        filters = [
-            ("YAML files", "*.yml", "*.yaml"),
-            ("All files", "*"),
-        ]
-        folder = self.window.str_folder or self.window.folder
-        if self.sd_file:
-            folder = os.path.dirname(self.sd_file)
-        filename = getOpenFileName(
-            self.window, 'Open monitor export', folder, filters)
-        if filename:
-            self.load_sd_values(filename)
-
-    def _open_float_values(self):
-        from madgui.widget.filedialog import getOpenFileName
-        filters = [
-            ("STR files", "*.str"),
-            ("All files", "*"),
-        ]
-        folder = self.window.str_folder or self.window.folder
-        if self.str_file:
-            folder = os.path.dirname(self.str_file)
-        filename = getOpenFileName(
-            self.window, 'Open strength export', folder, filters)
-        if filename:
-            self.load_float_values(filename)
 
     _aberration_magnitude = {
         'ax':  1e-4,    # 0.1 mrad
@@ -191,34 +71,21 @@ class BeamOptikStub(object):
             sigma = self._aberration_magnitude.get(prefix)
             if sigma is not None:
                 self.params[k] += gauss(0, sigma)
-
-    def set_float_values(self, data):
-        self.params = dicti(data)
-        self.auto_params.set(False)
+        self.ExecuteChanges()
 
     def set_sd_values(self, data):
         self.sd_values = dicti(data)
-        self.auto_sd.set(False)
+        self.auto_sd = False
 
-    def on_connected_changed(self, connected):
-        if connected:
-            self.model.changed.connect(self.on_model_changed)
-            self.on_model_changed(self.model())
-        else:
-            self.model.changed.disconnect(self.on_model_changed)
-        if self.menu:
-            self.menu.setEnabled(connected)
-
-    def on_model_changed(self, model):
+    def set_model(self, model):
+        self.model = model
         if model:
-            if self.auto_params():
-                self.update_params(model)
-            if self.auto_sd():
+            self.set_float_values(model.globals)
+            if self.auto_sd:
                 self.update_sd_values(model)
 
-    def update_params(self, model):
+    def set_float_values(self, data):
         self.params.clear()
-        self.params.update(model.globals)
         self.params.update({
             'A_POSTSTRIP':  1.007281417537080e+00,
             'Q_POSTSTRIP':  1.000000000000000e+00,
@@ -228,6 +95,8 @@ class BeamOptikStub(object):
             'E_SOURCE':     2.034800000000000e+02,
             'E_MEBT':       2.034800000000000e+02,
         })
+        self.params.update(data)
+        self.ExecuteChanges()
 
     @_api_meth
     def DisableMessageBoxes(self):
@@ -289,8 +158,10 @@ class BeamOptikStub(object):
     @_api_meth
     def ExecuteChanges(self, options):
         """Compute new measurements based on current model."""
-        if self.auto_sd():
-            self.update_sd_values(self.model())
+        if self.model:
+            self.model.update_globals(self.params)
+        if self.model and self.auto_sd:
+            self.update_sd_values(self.model)
 
     @_api_meth
     def SetNewValueCallback(self, callback):
@@ -301,7 +172,7 @@ class BeamOptikStub(object):
     def GetFloatValueSD(self, name, options=0):
         """Get beam diagnostic value."""
         try:
-            storage = self.sd_cache if self.jitter() else self.sd_values
+            storage = self.sd_cache if self.jitter else self.sd_values
             return storage[name] * 1000
         except KeyError:
             return -9999.0
@@ -370,10 +241,3 @@ class BeamOptikStub(object):
             float(channels.intensity),
             float(self.params.get('gantry_angle', channels.gantry_angle)))
         return (values, channels)
-
-
-def safe_relpath(path, start=None):
-    try:
-        return path and os.path.relpath(path, start)
-    except ValueError:  # e.g. different drive on windows
-        return path
