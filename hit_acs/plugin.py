@@ -312,12 +312,16 @@ class TestACS(_HitACS):
 
     def on_connected_changed(self, connected):
         if connected:
-            self.model.changed.connect(self._lib.set_model)
-            self._lib.set_model(self.model())
+            self.model.changed.connect(self.on_model_changed)
+            self.on_model_changed(self.model())
         else:
-            self.model.changed.disconnect(self._lib.set_model)
+            self.model.changed.disconnect(self.on_model_changed)
         if self.menu:
             self.menu.setEnabled(connected)
+
+    def on_model_changed(self, model):
+        clone = model and model.load_file(model.filename, stdout=False)
+        self._lib.set_model(clone)
 
     @property
     def model(self):

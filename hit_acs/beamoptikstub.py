@@ -162,7 +162,9 @@ class BeamOptikStub(object):
     @_api_meth
     def ExecuteChanges(self, options):
         """Compute new measurements based on current model."""
-        if self.auto_sd:
+        if self.model:
+            self.model.update_globals(self.params)
+        if self.model and self.auto_sd:
             self.update_sd_values(self.model)
 
     @_api_meth
