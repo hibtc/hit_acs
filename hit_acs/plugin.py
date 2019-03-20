@@ -267,8 +267,7 @@ class TestACS(_HitACS):
     def _toggle_auto_sd(self):
         self.auto_sd.set(not self.auto_sd())
         self._lib.auto_sd = self.auto_sd()
-        if self.auto_sd() and self.model():
-            self._lib.update_sd_values(self.model())
+        self._lib.update_sd_values()
 
     def _open_sd_values(self):
         from madgui.widget.filedialog import getOpenFileName
