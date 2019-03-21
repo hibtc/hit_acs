@@ -18,6 +18,7 @@ import madgui.util.unit as unit
 import madgui.online.api as api
 from madgui.util.misc import relpath as safe_relpath
 from madgui.util.collections import Bool
+from madgui.util.qt import SingleWindow
 
 from .dvm_parameters import load_csv
 from .offsets import find_offsets
@@ -249,6 +250,11 @@ class TestACS(_HitACS):
             Item('Load strengths from file', None,
                  'Load magnet strengths from strength export',
                  self._open_float_values),
+            Separator,
+            Item('Edit backend simulation model', None,
+                 'Edit initial conditions for the model used to simulate '
+                 'the backend behaviour',
+                 self._edit_model_initial_conditions.create),
         ])
 
     def export_settings(self):
@@ -267,8 +273,7 @@ class TestACS(_HitACS):
     def _toggle_auto_sd(self):
         self.auto_sd.set(not self.auto_sd())
         self._lib.auto_sd = self.auto_sd()
-        if self.auto_sd() and self.model():
-            self._lib.update_sd_values(self.model())
+        self._lib.update_sd_values()
 
     def _open_sd_values(self):
         from madgui.widget.filedialog import getOpenFileName
@@ -310,6 +315,10 @@ class TestACS(_HitACS):
     def on_model_changed(self, model):
         clone = model and model.load_file(model.filename, stdout=False)
         self._lib.set_model(clone)
+
+    @SingleWindow.factory
+    def _edit_model_initial_conditions(self):
+        return self.window._create_model_edit_dialog(self._lib.model)
 
     @property
     def model(self):

@@ -81,8 +81,7 @@ class BeamOptikStub(object):
         self.model = model
         if model:
             self.set_float_values(model.globals)
-            if self.auto_sd:
-                self.update_sd_values(model)
+            self.update_sd_values()
 
     def set_float_values(self, data):
         self.params.clear()
@@ -160,8 +159,7 @@ class BeamOptikStub(object):
         """Compute new measurements based on current model."""
         if self.model:
             self.model.update_globals(self.params)
-        if self.model and self.auto_sd:
-            self.update_sd_values(self.model)
+            self.update_sd_values()
 
     @_api_meth
     def SetNewValueCallback(self, callback):
@@ -188,23 +186,25 @@ class BeamOptikStub(object):
                 return gamma(mean**2/stddev**2, stddev**2/mean)
         return value
 
-    def update_sd_values(self, model):
+    def update_sd_values(self):
         """Compute new measurements based on current model."""
+        model = self.model
+        if not model or not self.auto_sd:
+            return
         model.twiss()
-        for elem in model.elements:
-            if elem.base_name.endswith('monitor'):
-                dx, dy = self.offsets.get(elem.name, (0, 0))
-                twiss = model.get_elem_twiss(elem.name)
-                values = {
-                    'widthx': twiss.envx,
-                    'widthy': twiss.envy,
-                    'posx': -twiss.x - dx,
-                    'posy': twiss.y - dy,
-                }
-                self.sd_values.update({
-                    key + '_' + elem.name: val
-                    for key, val in values.items()
-                })
+        for elem in self._monitors():
+            dx, dy = self.offsets.get(elem.name, (0, 0))
+            twiss = model.get_elem_twiss(elem.name)
+            values = {
+                'widthx': twiss.envx,
+                'widthy': twiss.envy,
+                'posx': -twiss.x - dx,
+                'posy': twiss.y - dy,
+            }
+            self.sd_values.update({
+                key + '_' + elem.name: val
+                for key, val in values.items()
+            })
 
     @_api_meth
     def GetLastFloatValueSD(self, name, vaccnum,
@@ -241,3 +241,7 @@ class BeamOptikStub(object):
             float(channels.intensity),
             float(self.params.get('gantry_angle', channels.gantry_angle)))
         return (values, channels)
+
+    def _monitors(self):
+        return [elem for elem in self.model.elements
+                if elem.base_name.endswith('monitor')]
