@@ -1,6 +1,18 @@
 CHANGELOG
 ~~~~~~~~~
 
+19.3.0
+------
+
+- let the stub work with its own independent model (for simulating a backend)
+- add dialog to edit our model
+- requires madgui 19.3.2
+- fix py2 compatibility issue in beamoptikdll.py (again…)
+- require importlib_resources
+- update package name
+- cleanup in setup script
+
+
 19.01.0
 -------
 
