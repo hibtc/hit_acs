@@ -43,7 +43,7 @@ jobs:
       if: tag IS present
       install: skip
       script:
-        - python setup.py sdist
+        - python setup.py sdist bdist_wheel
       deploy:
       - provider: pypi
         skip_cleanup: true
