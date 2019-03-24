@@ -7,11 +7,12 @@ python:
   - "3.6"
 
 install:
-  - python setup.py develop
-  - pip install flake8 docutils pygments
+  - python setup.py sdist bdist_wheel
+  - pip install dist/*.whl
+  - pip install flake8 docutils pygments twine
 
 script:
-  - python setup.py check -rs
+  - twine check dist/*.tar.gz
   - flake8
 
 jobs:
