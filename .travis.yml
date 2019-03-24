@@ -20,12 +20,13 @@ jobs:
       dist: xenial
 
     - stage: deploy
-      name: Upload release to Test PyPI
+      name: Upload release to PyPI
       python: "3.6"
-      if: branch = test-release
       install: skip
       script:
-        - echo "[egg_info]\\ntag-build = dev$TRAVIS_BUILD_NUMBER" >> setup.cfg
+        - if [[ -z $TRAVIS_TAG ]]; then
+            echo "[egg_info]\\ntag-build = dev$TRAVIS_BUILD_NUMBER" >> setup.cfg ;
+          fi
         - python setup.py sdist
       deploy:
       - provider: pypi
@@ -36,15 +37,6 @@ jobs:
         user: hibtc-deploy
         password:
           secure: "opPEkzlANf6uht7WmgQtHDQZJUlrYw9q1YcmWC+KkJ2EnytG9hwqYjcT4l4GUA9AmgZPCX7ExNUc/lyE1FLr7pjRutJeWPKpf9vlYq1XtlXKQRjPc2hAr4i4OTdDDGTdOz6MkRCSoDjn7cif4/iMU5CB2VO5A4mKY6DIbp6nTjcAw5ugCZVQgFBkYl45Mrw2ocwzILPd2uFKk8UgtziXYUgIy3mx9EgbDJ4ehnSQZ4yEl4L5Bq+5scfNxasJm4v9PfLIcX1o9evmwzcOT3gX+JaHgJMWvzfbzo6+W3RQA5+34lwl88Q5+mhJ6GWVd0jcvulMGJUaYp66rHleuXs2MdLnm7EzoNRp4GQEEgdI4wba8IjVSQJYbwAwxP5xr9gLFUXlLiUTuepCCsu5NHLE6eNwFJ3+u7pHGZxksgUCitVu00hdsHxh8SxSqPVWveIuY4kRQiB7gTi8vAcW1Aps1LAO1ss7E6lEpUJ8kC+boV6o3leDwq+yKSPYckR6wxAnCveH2V3C9qDLUHQyRz1sPfi9Nv8Lzmod2KXqQ3HTvwGILupMQibCt9uXYygquqzzhuyju8cELOy6v5+g+LDD8lrYyZ1I/R6lOf0B4Lx2v+VnlBmK6ul39TPqn09jbVMYHpUO6FCD+bwp8GneYmbKaLP6jtUrtqrsa36poj2cYpQ="
-
-    - stage: deploy
-      name: Upload release to PyPI
-      python: "3.6"
-      if: tag IS present
-      install: skip
-      script:
-        - python setup.py sdist bdist_wheel
-      deploy:
       - provider: pypi
         skip_cleanup: true
         on:
