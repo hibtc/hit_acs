@@ -9,7 +9,7 @@ python:
 before_install:
   - env | sort
   - if [[ -z $TRAVIS_TAG ]]; then
-      echo "[egg_info]\\ntag-build = dev$TRAVIS_BUILD_NUMBER" >> setup.cfg ;
+      echo -e "\n[egg_info]\ntag-build = dev$TRAVIS_BUILD_NUMBER" >> setup.cfg ;
     fi
 
 install:
