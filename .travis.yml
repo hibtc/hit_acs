@@ -1,43 +1,35 @@
 language: python
-
 python:
   - "2.7"
   - "3.4"
   - "3.5"
   - "3.6"
+  - "3.7"
+dist: xenial
 
 before_install:
+  - if [[ -n $TRAVIS_TAG ]]; then unset BUILD_TAG TWINE_REPOSITORY_URL; fi
   - env | sort
-  - if [[ -z $TRAVIS_TAG ]]; then
-      echo -e "\n[egg_info]\ntag-build = dev$TRAVIS_BUILD_NUMBER" >> setup.cfg ;
-    fi
 
 install:
-  - python setup.py sdist bdist_wheel
+  - python setup.py egg_info -b "$BUILD_TAG" sdist bdist_wheel
   - pip install dist/*.whl
   - pip install flake8 docutils pygments twine
 
 script:
-  - twine check dist/*.tar.gz
+  - twine check dist/*
   - flake8
 
 jobs:
   include:
-    - python: "3.7"
-      dist: xenial
-
     - stage: deploy
       name: Upload release to PyPI
       python: "3.6"
       if: branch = test-release OR tag IS present
-      script:
-        - if [[ -z $TRAVIS_TAG ]]; then
-            export TWINE_REPOSITORY_URL=https://test.pypi.org/legacy/ ;
-          fi
-        - twine upload dist/*.tar.gz dist/*.whl
-
-env:
-  global:
-    - TWINE_USERNAME=hibtc-deploy
-    # TWINE_PASSWORD
-    - secure: "OO5OsIYswhJeLA5uHIkgHcRpEb9i5LHpiW+Yy6Hje2iN4jRSVMKReHOuF53JJya/UP8amZOZGdK1O1gUwFFCtYUZD6E547Yvdbh4MiO2VJipYYZMEjOtUGobBKn/oURp7mzce2fjpYuL7c96P9khtR1NO6CqYQm820t2DRqoVg8uu3R4qr83NBju8zHmzF7Z97Xy+2T1d6OFaRre743RxJWHewHP2QK7AVwXxA8b7ZNoWZBZhiA/AIJjlvoEvg9U2gNo7kDhtYurHYFvJHiNA2i3XKTyokvXB650dGaStr0QurW2ohg6AygcposIeHgb+otFh0BasvafdekxC2igHtNIgDrzf0nLkavIXTU7p4gexE2NQRk3s6Ix1dyxlYt9+UUYMPpsHffNGND9JM+qcn1Il31caqMDLSH9F/3Tl++lbxt19H79HIDYbTuVVZWwkTWl+X7q+bs7QRarYF851ngps4Cm415EXNC5OGXPKD0DNS9wjqAwSxWrKFWU5L0h4TW7rxszgzzR6yHsxeMac1eXNVMFLhcR0f8SUET0kW9R2MwAfc3uMxOidD08zadwkToZf1EnkwPFJ5x7qgjx/mhKPQlcG6s3Pt6FGMkBmGqTCa2MWeLzhGRXvCKDD1YKc1pBJr7GGOdm3EyjrEm7g9q0+IbRmoXvhbz8lJVvGgk="
+      script: twine upload dist/*.tar.gz dist/*.whl
+      env:
+        - BUILD_TAG=dev$TRAVIS_BUILD_NUMBER
+        - TWINE_REPOSITORY_URL=https://test.pypi.org/legacy/
+        - TWINE_USERNAME=hibtc-deploy
+        # TWINE_PASSWORD
+        - secure: "OO5OsIYswhJeLA5uHIkgHcRpEb9i5LHpiW+Yy6Hje2iN4jRSVMKReHOuF53JJya/UP8amZOZGdK1O1gUwFFCtYUZD6E547Yvdbh4MiO2VJipYYZMEjOtUGobBKn/oURp7mzce2fjpYuL7c96P9khtR1NO6CqYQm820t2DRqoVg8uu3R4qr83NBju8zHmzF7Z97Xy+2T1d6OFaRre743RxJWHewHP2QK7AVwXxA8b7ZNoWZBZhiA/AIJjlvoEvg9U2gNo7kDhtYurHYFvJHiNA2i3XKTyokvXB650dGaStr0QurW2ohg6AygcposIeHgb+otFh0BasvafdekxC2igHtNIgDrzf0nLkavIXTU7p4gexE2NQRk3s6Ix1dyxlYt9+UUYMPpsHffNGND9JM+qcn1Il31caqMDLSH9F/3Tl++lbxt19H79HIDYbTuVVZWwkTWl+X7q+bs7QRarYF851ngps4Cm415EXNC5OGXPKD0DNS9wjqAwSxWrKFWU5L0h4TW7rxszgzzR6yHsxeMac1eXNVMFLhcR0f8SUET0kW9R2MwAfc3uMxOidD08zadwkToZf1EnkwPFJ5x7qgjx/mhKPQlcG6s3Pt6FGMkBmGqTCa2MWeLzhGRXvCKDD1YKc1pBJr7GGOdm3EyjrEm7g9q0+IbRmoXvhbz8lJVvGgk="
