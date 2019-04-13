@@ -1,8 +1,16 @@
 CHANGELOG
 ~~~~~~~~~
 
+19.4.0
+------
+Date: 13.04.2019
+
+- simplifications in travis configuration and setup.cfg
+
+
 19.3.0
 ------
+Date: 21.03.2019
 
 - let the stub work with its own independent model (for simulating a backend)
 - add dialog to edit our model
@@ -15,6 +23,7 @@ CHANGELOG
 
 19.01.0
 -------
+Date: 19.01.2019
 
 - rename package to ``hit_acs``
 - fix another error in ``SetNewValueCallback`` due to using missing ``.value``
@@ -42,6 +51,7 @@ CHANGELOG
 
 18.12.0
 -------
+Date: 11.12.2018
 
 - fix exception in ``OnlineBackend.__init__`` due to missing parenthesis
 - keep a reference to the ctypes callback for ``SetNewValueCallback``, to
@@ -53,6 +63,7 @@ CHANGELOG
 
 18.10.0
 -------
+Date: 18.10.2018
 
 Now in calver_ (calendaric versioning) ``YY.MM.patch`` since this better fits
 the nature of madgui development and is I believe more useful for end-users.
