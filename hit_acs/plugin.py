@@ -148,6 +148,8 @@ class _HitACS(api.Backend):
 
     def write_param(self, param, value):
         """Update parameter into control system."""
+        if param == 'gantry_angle':
+            return
         try:
             self._lib.SetFloatValue(param, value)
         except RuntimeError as e:
