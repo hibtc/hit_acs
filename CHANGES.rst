@@ -1,6 +1,15 @@
 CHANGELOG
 ~~~~~~~~~
 
+19.4.1
+------
+Date: 30.04.2019
+
+- suppress irritating error message about 'gantry_angle' when uploading params
+- warn if the model gantry_angle differs from the active MEFI
+- don't modify the user's model when initializing stub backend
+
+
 19.4.0
 ------
 Date: 13.04.2019
