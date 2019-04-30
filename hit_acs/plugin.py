@@ -192,20 +192,19 @@ class TestACS(_HitACS):
     def __init__(self, session, settings):
         params = load_dvm_parameters()
         offsets = find_offsets(settings.get('runtime_path', '.'))
+        # Don't pass `session.model()` to the stub. It should use an
+        # independent simulation, which is cloned upon connection in
+        # `on_model_changed`:
         lib = session.user_ns.beamoptikdll = BeamOptikStub(
-            session.model(), offsets, settings)
+            None, offsets, settings)
         super().__init__(lib, params, session.model, offsets)
         self.menu = None
         self.window = None
         self.set_window(session.window())
         self.connected.changed.connect(self.on_connected_changed)
 
-        self.str_file = str_file = settings.get('str_file')
-        self.sd_file = sd_file = settings.get('sd_file')
-        if str_file:
-            self.load_float_values(self.str_file)
-        if sd_file:
-            self.load_sd_values(self.sd_file)
+        self.str_file = settings.get('str_file')
+        self.sd_file = settings.get('sd_file')
 
     def load_float_values(self, filename):
         from madgui.util.export import read_str_file
@@ -323,6 +322,11 @@ class TestACS(_HitACS):
     def on_model_changed(self, model):
         clone = model and model.load_file(model.filename, stdout=False)
         self._lib.set_model(clone)
+        if clone:
+            if self.str_file:
+                self.load_float_values(self.str_file)
+            if self.sd_file:
+                self.load_sd_values(self.sd_file)
 
     @SingleWindow.factory
     def _edit_model_initial_conditions(self):
