@@ -149,6 +149,12 @@ class _HitACS(api.Backend):
     def write_param(self, param, value):
         """Update parameter into control system."""
         if param == 'gantry_angle':
+            cur_angle = self.read_param('gantry_angle')
+            if value != cur_angle:
+                logging.warning(
+                    "Unable to set gantry_angle={} (is {}). This parameter "
+                    "can only be changed by selecting the MEFI combination!"
+                    .format(value, cur_angle))
             return
         try:
             self._lib.SetFloatValue(param, value)
