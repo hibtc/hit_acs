@@ -36,6 +36,8 @@ PERIODIC_TABLE = {
     8: 'O',
 }
 
+MEFI_PARAMS = ('beam_energy', 'beam_focus', 'beam_intensity', 'gantry_angle')
+
 
 def load_dvm_parameters():
     blob = read_binary('hit_acs', 'DVM-Parameter_v2.10.0-HIT.csv')
@@ -49,6 +51,30 @@ class _HitACS(api.Backend):
         self._lib = lib
         self._params = params
         self._params.update({
+            'beam_energy': dict(
+                name='beam_energy',
+                ui_name='beam_energy',
+                ui_hint='',
+                ui_prec=3,
+                unit='MeV/u',
+                ui_unit='MeV/u',
+                ui_conv=1),
+            'beam_focus': dict(
+                name='beam_focus',
+                ui_name='beam_focus',
+                ui_hint='',
+                ui_prec=3,
+                unit='m',
+                ui_unit='mm',
+                ui_conv=1000),
+            'beam_intensity': dict(
+                name='beam_intensity',
+                ui_name='beam_intensity',
+                ui_hint='',
+                ui_prec=3,
+                unit='',
+                ui_unit='',
+                ui_conv=1),
             'gantry_angle': dict(
                 name='gantry_angle',
                 ui_name='gantry_angle',
@@ -139,8 +165,9 @@ class _HitACS(api.Backend):
 
     def read_param(self, param):
         """Read parameter. Return numeric value."""
-        if param == 'gantry_angle':
-            return self._lib.GetMEFIValue()[0][3]
+        param = param.lower()
+        if param in MEFI_PARAMS:
+            return self._lib.GetMEFIValue()[0][MEFI_PARAMS.index(param)]
         try:
             return self._lib.GetFloatValue(param)
         except RuntimeError as e:
@@ -148,13 +175,14 @@ class _HitACS(api.Backend):
 
     def write_param(self, param, value):
         """Update parameter into control system."""
-        if param == 'gantry_angle':
-            cur_angle = self.read_param('gantry_angle')
-            if value != cur_angle:
+        param = param.lower()
+        if param in MEFI_PARAMS:
+            cur_value = self.read_param(param)
+            if value != cur_value:
                 logging.warning(
-                    "Unable to set gantry_angle={} (is {}). This parameter "
+                    "Unable to set {}={} (is {}). This parameter "
                     "can only be changed by selecting the MEFI combination!"
-                    .format(value, cur_angle))
+                    .format(param, value, cur_value))
             return
         try:
             self._lib.SetFloatValue(param, value)
