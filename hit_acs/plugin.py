@@ -163,7 +163,19 @@ class _HitACS(api.Backend):
             'envy': envy / 1000,
         }
 
-    def read_param(self, param):
+    def read_params(self, param_names=None, warn=True):
+        """Read all specified params (by default all). Return dict."""
+        if param_names is None:
+            param_names = self._params
+            warn = False
+        return {
+            param: value
+            for param in param_names
+            for value in [self.read_param(param, warn=warn)]
+            if value is not None
+        }
+
+    def read_param(self, param, warn=True):
         """Read parameter. Return numeric value."""
         param = param.lower()
         if param in MEFI_PARAMS:
@@ -171,7 +183,8 @@ class _HitACS(api.Backend):
         try:
             return self._lib.GetFloatValue(param)
         except RuntimeError as e:
-            logging.error("{} for {!r}".format(e, param))
+            if warn:
+                logging.warning("{} for {!r}".format(e, param))
 
     def write_param(self, param, value):
         """Update parameter into control system."""
