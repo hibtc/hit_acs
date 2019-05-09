@@ -1,6 +1,16 @@
 CHANGELOG
 ~~~~~~~~~
 
+19.5.0
+------
+Date: 09.05.2019
+
+- add knobs for remaining MEFI params
+- add method to read al or multiple parameters at once
+  (required by madgui 19.5.1)
+- fix outdated code in menuitem for editting model init conditions
+
+
 19.4.1
 ------
 Date: 30.04.2019
