@@ -371,7 +371,9 @@ class TestACS(_HitACS):
 
     @SingleWindow.factory
     def _edit_model_initial_conditions(self):
-        return self.window._create_model_edit_dialog(self._lib.model)
+        from madgui.widget.params import model_params_dialog
+        return model_params_dialog(
+            self._lib.model, parent=self.window, folder=self.window.folder)
 
     @property
     def model(self):
