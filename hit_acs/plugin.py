@@ -49,7 +49,7 @@ class _HitACS(api.Backend):
 
     def __init__(self, lib, params, model=None, offsets=None, settings=None):
         self._lib = lib
-        self._params = {
+        self._params = dicti({
             'beam_energy': dict(
                 name='beam_energy',
                 ui_name='beam_energy',
@@ -82,7 +82,7 @@ class _HitACS(api.Backend):
                 unit='°',
                 ui_unit='°',
                 ui_conv=1),
-        }
+        })
         self._params.update(params)
         self._model = model
         self._offsets = {} if offsets is None else offsets
