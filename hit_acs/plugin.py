@@ -132,7 +132,7 @@ class _HitACS(api.Backend):
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
-        data = self._params.get(knob.lower())
+        data = self._params.get(knob)
         return data and api.ParamInfo(**data)
 
     def read_monitor(self, name):
