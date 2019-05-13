@@ -1,12 +1,20 @@
 CHANGELOG
 ~~~~~~~~~
 
+19.5.1
+------
+Date: 13.05.2019
+
+- make parameter lookup case-insensitive again (was accidentally made
+  case-sensitive when changing order of parameters)
+
+
 19.5.0
 ------
 Date: 09.05.2019
 
 - add knobs for remaining MEFI params
-- add method to read al or multiple parameters at once
+- add method to read all/multiple parameters at once
   (required by madgui 19.5.1)
 - fix outdated code in menuitem for editting model init conditions
 
