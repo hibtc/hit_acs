@@ -105,7 +105,7 @@ class BeamOptikStub(object):
     @_api_meth
     def GetInterfaceInstance(self):
         """Create a new interface instance."""
-        self.vacc = 1
+        self.vacc = 3
         self.EFIA = (1, 1, 1, 1)
         return 1337
 

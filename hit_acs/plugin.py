@@ -88,6 +88,7 @@ class _HitACS(api.Backend):
         self._offsets = {} if offsets is None else offsets
         self.connected = Bool(False)
         self.settings = settings
+        self.vAcc = 0
 
     @property
     def beamoptikdll(self):
@@ -108,6 +109,7 @@ class _HitACS(api.Backend):
             self._lib.SelectVAcc(settings['vacc'])
         if settings.get('vacc') and settings.get('mefi'):
             self._lib.SelectMEFI(settings['vacc'], *settings['mefi'])
+        self.vAcc = self._lib.GetSelectedVAcc()
 
     def disconnect(self):
         """Disconnect from online database."""
@@ -116,6 +118,8 @@ class _HitACS(api.Backend):
         self.connected.set(False)
 
     def export_settings(self):
+        """Updates the settings yaml file for future loggins"""
+        # I havent found where this method is used
         mefi = self._lib.GetMEFIValue()[1]
         settings = {
             'variant': self._lib._variant,
@@ -215,6 +219,30 @@ class _HitACS(api.Backend):
             'mass':     unit.from_ui('mass',   mass),
             'energy':   unit.from_ui('energy', mass * (e_kin + 1*units.c**2)),
         }
+
+    def vAcc_to_model(self):
+        """User defined vAcc to model"""
+        # No work around this unless
+        # we implement a yml config file with
+        # this information (as Thomas would have done it)
+        # TODO: Implement a yaml file to keep genericity on the code
+        T1 = [1, 6,  11]
+        T2 = [2, 7,  12]
+        GA = [3, 8,  13]
+        QS = [4, 9,  14]
+        BD = [5, 10, 15]
+        if (self.vAcc in T1):
+            return 'hht1.cpymad.yml'
+        if (self.vAcc in T2):
+            return 'hht2.cpymad.yml'
+        if (self.vAcc in GA):
+            return 'hht3.cpymad.yml'
+        if (self.vAcc in QS):
+            return 'hht4.cpymad.yml'
+        if (self.vAcc in BD):
+            return 'hht5.cpymad.yml'
+        logging.warning('vAcc is not standard. Load model manually.')
+        return 'hht3.cpymad.yml'
 
 
 class HitACS(_HitACS):
