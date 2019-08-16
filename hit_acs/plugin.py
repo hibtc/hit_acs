@@ -47,7 +47,8 @@ def load_dvm_parameters():
 
 class _HitACS(api.Backend):
 
-    def __init__(self, lib, params, model=None, offsets=None, settings=None, control = None):
+    def __init__(self, lib, params, model=None, offsets=None, settings=None,
+                 control = None):
         self._lib = lib
         self._params = dicti({
             'beam_energy': dict(
@@ -254,7 +255,8 @@ class HitACS(_HitACS):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         lib = session.user_ns.beamoptikdll = BeamOptikDLL(
             variant=settings.get('variant', 'HIT'))
-        super().__init__(lib, params, session.model, offsets, settings, session.control)
+        super().__init__(lib, params, session.model, offsets, settings,
+                         session.control)
 
 
 class TestACS(_HitACS):
@@ -267,7 +269,8 @@ class TestACS(_HitACS):
         # `on_model_changed`:
         lib = session.user_ns.beamoptikdll = BeamOptikStub(
             None, offsets, settings)
-        super().__init__(lib, params, session.model, offsets, control=session.control)
+        super().__init__(lib, params, session.model, offsets,
+                         control=session.control)
         self.menu = None
         self.window = None
         self.set_window(session.window())
