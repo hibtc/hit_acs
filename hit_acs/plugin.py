@@ -47,7 +47,8 @@ def load_dvm_parameters():
 
 class _HitACS(api.Backend):
 
-    def __init__(self, lib, params, model=None, offsets=None, settings=None):
+    def __init__(self, lib, params, model=None, offsets=None, settings=None,
+                 control = None):
         self._lib = lib
         self._params = dicti({
             'beam_energy': dict(
@@ -88,6 +89,7 @@ class _HitACS(api.Backend):
         self._offsets = {} if offsets is None else offsets
         self.connected = Bool(False)
         self.settings = settings
+        self.control = control
         self.vAcc = 0
 
     @property
@@ -101,14 +103,6 @@ class _HitACS(api.Backend):
         """Connect to online database (must be loaded)."""
         self._lib.GetInterfaceInstance()
         self.connected.set(True)
-        settings = self.settings or {}
-        # We should probably select VAcc/MEFI based on loaded sequence… or the
-        # other way round? …anyway doing something unexpected might be even
-        # more inconvienient than simply using the last selected:
-        if settings.get('vacc'):
-            self._lib.SelectVAcc(settings['vacc'])
-        if settings.get('vacc') and settings.get('mefi'):
-            self._lib.SelectMEFI(settings['vacc'], *settings['mefi'])
         self.vAcc = self._lib.GetSelectedVAcc()
 
     def disconnect(self):
@@ -119,7 +113,6 @@ class _HitACS(api.Backend):
 
     def export_settings(self):
         """Updates the settings yaml file for future loggins"""
-        # I havent found where this method is used
         mefi = self._lib.GetMEFIValue()[1]
         settings = {
             'variant': self._lib._variant,
@@ -133,6 +126,7 @@ class _HitACS(api.Backend):
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
         self._lib.ExecuteChanges(options)
+        self.update_model_with_vAcc()
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
@@ -225,7 +219,7 @@ class _HitACS(api.Backend):
         # No work around this unless
         # we implement a yml config file with
         # this information (as Thomas would have done it)
-        # TODO: Implement a yaml file to keep genericity on the code
+        # TODO: Implement a yaml file to keep code style
         T1 = [1, 6,  11]
         T2 = [2, 7,  12]
         GA = [3, 8,  13]
@@ -242,7 +236,15 @@ class _HitACS(api.Backend):
         if (self.vAcc in BD):
             return 'hht5.cpymad.yml'
         logging.warning('vAcc is not standard. Load model manually.')
-        return 'hht3.cpymad.yml'
+        return self.model().model_data()['sequence']
+
+    def update_model_with_vAcc(self):
+        """If vAcc was changed, ask if the model also should be changed"""
+        new_vAcc = self._lib.GetSelectedVAcc()
+        same_vAcc = (self.vAcc == new_vAcc)
+        if (not same_vAcc):
+            self.vAcc = new_vAcc
+            self.control.auto_load_model()
 
 
 class HitACS(_HitACS):
@@ -253,7 +255,8 @@ class HitACS(_HitACS):
         offsets = find_offsets(settings.get('runtime_path', '.'))
         lib = session.user_ns.beamoptikdll = BeamOptikDLL(
             variant=settings.get('variant', 'HIT'))
-        super().__init__(lib, params, session.model, offsets, settings)
+        super().__init__(lib, params, session.model, offsets,
+                         settings, session.control)
 
 
 class TestACS(_HitACS):
@@ -266,7 +269,8 @@ class TestACS(_HitACS):
         # `on_model_changed`:
         lib = session.user_ns.beamoptikdll = BeamOptikStub(
             None, offsets, settings)
-        super().__init__(lib, params, session.model, offsets)
+        super().__init__(lib, params, session.model, offsets,
+                         control=session.control)
         self.menu = None
         self.window = None
         self.set_window(session.window())
