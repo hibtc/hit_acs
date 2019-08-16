@@ -48,7 +48,7 @@ def load_dvm_parameters():
 class _HitACS(api.Backend):
 
     def __init__(self, lib, params, model=None, offsets=None, settings=None,
-                 control = None):
+                 control=None):
         self._lib = lib
         self._params = dicti({
             'beam_energy': dict(
