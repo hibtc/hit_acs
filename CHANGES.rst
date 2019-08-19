@@ -1,6 +1,12 @@
 CHANGELOG
 ~~~~~~~~~
 
+19.8.0
+------
+Date: 19.08.2019
+
+- add auto load model feature
+  
 19.5.1
 ------
 Date: 13.05.2019
