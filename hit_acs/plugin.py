@@ -101,7 +101,7 @@ class _HitACS(api.Backend):
 
     def connect(self):
         """Connect to online database (must be loaded)."""
-        self._lib.GetInterfaceInstance()
+        status = self._lib.GetInterfaceInstance()
         self.connected.set(True)
         self.vAcc = self._lib.GetSelectedVAcc()
 
