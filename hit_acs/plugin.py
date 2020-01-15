@@ -126,7 +126,9 @@ class _HitACS(api.Backend):
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
         self._lib.ExecuteChanges(options)
-        self.update_model_with_vAcc()
+        # FIXME: Bug while measuring ORM and not auto loading model
+        # if using the GUI interface of BeamOptikDLL
+        # self.update_model_with_vAcc()
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
@@ -239,9 +241,10 @@ class _HitACS(api.Backend):
         return self.model().model_data()['sequence']
 
     def update_model_with_vAcc(self):
-        """If vAcc was changed, ask if the model also should be changed"""
+        """If vAcc was changed, change the model"""
         new_vAcc = self._lib.GetSelectedVAcc()
         same_vAcc = (self.vAcc == new_vAcc)
+        logging.debug('Same vAcc: {}'.format(same_vAcc))
         if (not same_vAcc):
             self.vAcc = new_vAcc
             self.control.auto_load_model()
