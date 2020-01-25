@@ -102,6 +102,7 @@ class _HitACS(api.Backend):
     def connect(self):
         """Connect to online database (must be loaded)."""
         status = self._lib.GetInterfaceInstance()
+        logging.debug('Conection status: {}'.format(status))
         self.connected.set(True)
         self.vAcc = self._lib.GetSelectedVAcc()
 
@@ -244,6 +245,7 @@ class _HitACS(api.Backend):
         if not same_vAcc:
             self.vAcc = new_vAcc
         return same_vAcc
+
 
 class HitACS(_HitACS):
 
