@@ -379,6 +379,7 @@ class BeamOptikDLL(object):
         :raises RuntimeError: if the exit code is a known error code != 0
         :raises ValueError: if the exit code is unknown
         """
+        logging.debug(cls.error_messages[done])
         if 0 < done and done < len(cls.error_messages):
             raise RuntimeError(cls.error_messages[done])
         elif done != 0:

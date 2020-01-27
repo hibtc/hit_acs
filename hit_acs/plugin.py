@@ -101,7 +101,8 @@ class _HitACS(api.Backend):
 
     def connect(self):
         """Connect to online database (must be loaded)."""
-        self._lib.GetInterfaceInstance()
+        status = self._lib.GetInterfaceInstance()
+        logging.debug('Conection status: {}'.format(status))
         self.connected.set(True)
         self.vAcc = self._lib.GetSelectedVAcc()
 
@@ -126,9 +127,6 @@ class _HitACS(api.Backend):
     def execute(self, options=ExecOptions.CalcDif):
         """Execute changes (commits prior set_value operations)."""
         self._lib.ExecuteChanges(options)
-        # FIXME: Bug while measuring ORM and not auto loading model
-        # if using the GUI interface of BeamOptikDLL
-        # self.update_model_with_vAcc()
 
     def param_info(self, knob):
         """Get parameter info for backend key."""
@@ -240,14 +238,13 @@ class _HitACS(api.Backend):
         logging.warning('vAcc is not standard. Load model manually.')
         return self.model().model_data()['sequence']
 
-    def update_model_with_vAcc(self):
-        """If vAcc was changed, change the model"""
+    def hasChangedvAcc(self):
+        """Checks if the vAcc has changed. Updates if so."""
         new_vAcc = self._lib.GetSelectedVAcc()
         same_vAcc = (self.vAcc == new_vAcc)
-        logging.debug('Same vAcc: {}'.format(same_vAcc))
-        if (not same_vAcc):
+        if not same_vAcc:
             self.vAcc = new_vAcc
-            self.control.auto_load_model()
+        return same_vAcc
 
 
 class HitACS(_HitACS):

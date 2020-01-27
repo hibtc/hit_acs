@@ -1,6 +1,12 @@
 CHANGELOG
 ~~~~~~~~~
 
+20.1.0
+------
+Date: 25.01.2020
+
+- revisit auto load model feature implementation
+
 19.8.0
 ------
 Date: 19.08.2019
