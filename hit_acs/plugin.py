@@ -238,14 +238,6 @@ class _HitACS(api.Backend):
         logging.warning('vAcc is not standard. Load model manually.')
         return self.model().model_data()['sequence']
 
-    def hasChangedvAcc(self):
-        """Checks if the vAcc has changed. Updates if so."""
-        new_vAcc = self._lib.GetSelectedVAcc()
-        same_vAcc = (self.vAcc == new_vAcc)
-        if not same_vAcc:
-            self.vAcc = new_vAcc
-        return same_vAcc
-
 
 class HitACS(_HitACS):
 
