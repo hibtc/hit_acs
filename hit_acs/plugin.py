@@ -90,7 +90,7 @@ class _HitACS(api.Backend):
         self.connected = Bool(False)
         self.settings = settings
         self.control = control
-        self.vAcc = 0
+        self.vAcc = 3
 
     @property
     def beamoptikdll(self):
