@@ -23,6 +23,7 @@ from madgui.util.qt import SingleWindow
 from .dvm_parameters import load_csv
 from .offsets import find_offsets
 
+import numpy as np
 
 ENERGY_PARAM = {
     'lebt': 'E_SOURCE',
@@ -38,6 +39,13 @@ PERIODIC_TABLE = {
 
 MEFI_PARAMS = ('beam_energy', 'beam_focus', 'beam_intensity', 'gantry_angle')
 
+VACC_TABLE = {
+    'T1': ([1, 6,  11], 'hht1.cpymad.yml'),
+    'T2': ([2, 7,  12], 'hht2.cpymad.yml'),
+    'GA': ([3, 8,  13], 'hht3.cpymad.yml'),
+    'QS': ([4, 9,  14], 'hht4.cpymad.yml'),
+    'BD': ([5, 10, 15], 'hht5.cpymad.yml'),
+}
 
 def load_dvm_parameters():
     blob = read_binary('hit_acs', 'DVM-Parameter_v2.10.0-HIT.csv')
@@ -90,7 +98,7 @@ class _HitACS(api.Backend):
         self.connected = Bool(False)
         self.settings = settings
         self.control = control
-        self.vAcc = 3
+        self.vAcc = -1
 
     @property
     def beamoptikdll(self):
@@ -104,7 +112,6 @@ class _HitACS(api.Backend):
         status = self._lib.GetInterfaceInstance()
         logging.debug('Conection status: {}'.format(status))
         self.connected.set(True)
-        self.vAcc = self._lib.GetSelectedVAcc()
 
     def disconnect(self):
         """Disconnect from online database."""
@@ -216,27 +223,23 @@ class _HitACS(api.Backend):
 
     def vAcc_to_model(self):
         """User defined vAcc to model"""
-        # No work around this unless
-        # we implement a yml config file with
-        # this information (as Thomas would have done it)
-        # TODO: Implement a yaml file to keep code style
-        T1 = [1, 6,  11]
-        T2 = [2, 7,  12]
-        GA = [3, 8,  13]
-        QS = [4, 9,  14]
-        BD = [5, 10, 15]
-        if (self.vAcc in T1):
-            return 'hht1.cpymad.yml'
-        if (self.vAcc in T2):
-            return 'hht2.cpymad.yml'
-        if (self.vAcc in GA):
-            return 'hht3.cpymad.yml'
-        if (self.vAcc in QS):
-            return 'hht4.cpymad.yml'
-        if (self.vAcc in BD):
-            return 'hht5.cpymad.yml'
+        vAcc = self.vAcc = self._lib.GetSelectedVAcc()
+        _isStdVacc = False
+
+        if vAcc in np.arange(16):
+            _isStdVacc = True
+            logging.info('Loading model with vAcc {}'.format(vAcc))
+            for bL in VACC_TABLE:
+                beamLine = VACC_TABLE[bL]
+                if self.vAcc in beamLine[0]:
+                    return beamLine[1], _isStdVacc
+
+        if vAcc==-1.:
+            logging.warning('Please select a vAcc.')
+            return self.model().model_data()['sequence'], _isStdVacc
+
         logging.warning('vAcc is not standard. Load model manually.')
-        return self.model().model_data()['sequence']
+        return self.model().model_data()['sequence'], _isStdVacc
 
 
 class HitACS(_HitACS):
