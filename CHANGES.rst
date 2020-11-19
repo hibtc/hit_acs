@@ -2,7 +2,7 @@ CHANGELOG
 ~~~~~~~~~
 
 20.11.0
-------
+-------
 Date: 25.01.2020
 
 - debug auto load model feature
