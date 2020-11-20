@@ -221,6 +221,10 @@ class _HitACS(api.Backend):
             'energy':   unit.from_ui('energy', mass * (e_kin + 1*units.c**2)),
         }
 
+    def get_MEFI(self):
+        mefi = self._lib.GetMEFIValue()[1]
+        return mefi and tuple(mefi)
+
     def vAcc_to_model(self):
         """User defined vAcc to model"""
         vAcc = self.vAcc = self._lib.GetSelectedVAcc()
