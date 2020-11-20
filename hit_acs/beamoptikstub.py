@@ -24,7 +24,8 @@ def _api_meth(func):
     @functools.wraps(func)
     def wrapper(self, *args):
         if func.__name__ != 'GetFloatValueSD':
-            logging.debug('{}{}'.format(func.__name__, args))
+            pass
+            #logging.debug('{}{}'.format(func.__name__, args))
         return func(self, *args)
     return wrapper
 
